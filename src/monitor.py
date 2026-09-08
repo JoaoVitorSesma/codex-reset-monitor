@@ -450,7 +450,7 @@ def find_matching_event(state: dict, signal: Signal, assessment: Assessment) -> 
         if not compatible_scope(event.get("scope", "unknown"), assessment.scope):
             continue
 
-        event_anchor_value = event.get("expected_at") or event.get("last_seen") or event.get("first_seen")
+        event_anchor_value = event.get("anchor_at") or event.get("expected_at") or event.get("last_seen") or event.get("first_seen")
         event_dt = parse_dt(event_anchor_value)
         if not event_dt:
             continue
@@ -481,6 +481,7 @@ def merge_signal_into_event(state: dict, signal: Signal, assessment: Assessment)
             "first_seen": iso_now(),
             "last_seen": iso_now(),
             "expected_at": assessment.expected_at,
+            "anchor_at": event_anchor(signal, assessment).isoformat(),
             "sources": [],
             "notified_statuses": [],
         }
@@ -491,6 +492,8 @@ def merge_signal_into_event(state: dict, signal: Signal, assessment: Assessment)
     event["confidence"] = max(int(event.get("confidence", 0)), assessment.confidence)
     if not event.get("expected_at") and assessment.expected_at:
         event["expected_at"] = assessment.expected_at
+    if not event.get("anchor_at"):
+        event["anchor_at"] = event_anchor(signal, assessment).isoformat()
 
     source = normalized_source(signal, assessment)
     existing_source_ids = {s.get("signal_id") for s in event.get("sources", [])}
@@ -903,6 +906,11 @@ def main() -> int:
             pending_notifications.append((event, signal, assessment, upgraded))
 
     if not state.get("initialized", False):
+        # Baseline events should not later notify merely because a second source
+        # corroborates the same already-known status. A genuine likely→confirmed
+        # upgrade still notifies because "confirmed" is a different status.
+        for event in state.get("events", []):
+            mark_notified(event)
         state["initialized"] = True
         state["seen_signal_fingerprints"] = list(seen)
         save_state(state)
