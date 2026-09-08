@@ -3,21 +3,23 @@
   "initialized": true,
   "seen_signal_fingerprints": [
     "c9b059820edd20a182012936d8ae9a255ddb444dcdc382a144375268a8b0a97b",
-    "c6f1341abb7a29ec718aed378e6d33f54b18ccfc0a891c61ce5ff1d4c3c067c1",
-    "331a475b2547006a293d0618134b45f0c113189e049ee3a94e7cff4fa065e86a",
-    "3050cbdfc60bf2a1249aae040eaeeb26406f53dbd39d362c9b9ef47ca56cf74b",
-    "98bc4a0cf38b416795e9d7ebe94a8a60c6e211de5e264badd6e414879d4b33b3",
+    "40265baaacd6129ad09de884151ffadb56cc746f0f749c35e8980e886f9252c6",
     "b4051df2bcf97365bacda08b7bbf51959eefa548746262bbf3bd2777149903f1",
-    "69b1681512fe6d519a1f52d76bfac1a88c1e4e6bf829e83ce341e0ffb65eeac4",
-    "46c3a71c0b464ce3e877889d13b7c2405bd239804c7293cc66e5678e352ad0bc",
+    "98bc4a0cf38b416795e9d7ebe94a8a60c6e211de5e264badd6e414879d4b33b3",
     "c2fb7bc206fa13779996d964e27e4f422075ae1fec1cf3a015b5bcd72b0089d8",
-    "76950b6bdc1f107dabcafbac0b6e7a09efc9b84c2a61c29ac00acdf62c8142ec",
-    "4e1ab50b6adcca2c05522376f240ad9107fda36a69f0dcf364931b417a3ebb06",
-    "e15eea55df37491e6403e18ab9a96919130f355529bed5776007d9a8836e73f6",
-    "b8743baa3af3d03c43190d4cf35179866ed02d5b3bddb240eb1595050021706f",
     "db6cc1ca56582d46a4dbc142b7dceaa6ababbf7fda93cd37c8ab491f0fdc8ac8",
+    "30b9542e9965d10f9cbbfebc4670d19928f1e55a1b2dc647a6055997d0165230",
+    "4e1ab50b6adcca2c05522376f240ad9107fda36a69f0dcf364931b417a3ebb06",
     "c4f7026d4e2076190b1479e72ca11240883df6a715c66fa5a06099c10feca665",
-    "40265baaacd6129ad09de884151ffadb56cc746f0f749c35e8980e886f9252c6"
+    "3050cbdfc60bf2a1249aae040eaeeb26406f53dbd39d362c9b9ef47ca56cf74b",
+    "c6f1341abb7a29ec718aed378e6d33f54b18ccfc0a891c61ce5ff1d4c3c067c1",
+    "b8743baa3af3d03c43190d4cf35179866ed02d5b3bddb240eb1595050021706f",
+    "2dfbe3e40378666b8047e5f8f64daf0a6052464c95cb38f6cbf7b522057c83f7",
+    "46c3a71c0b464ce3e877889d13b7c2405bd239804c7293cc66e5678e352ad0bc",
+    "e15eea55df37491e6403e18ab9a96919130f355529bed5776007d9a8836e73f6",
+    "76950b6bdc1f107dabcafbac0b6e7a09efc9b84c2a61c29ac00acdf62c8142ec",
+    "331a475b2547006a293d0618134b45f0c113189e049ee3a94e7cff4fa065e86a",
+    "69b1681512fe6d519a1f52d76bfac1a88c1e4e6bf829e83ce341e0ffb65eeac4"
   ],
   "source_fingerprints": {
     "help-b3cddfd7689721d621fc": "784744693a1ef54420c8b4de4aa3e72cf1b7a147168f2bfe606c61c8c37efebf",
@@ -79,17 +81,22 @@
     "community-1941664": "a5061916d8a50d448f7a317bb7c9ba1eb7982bd868cfa768884a061421230f82",
     "community-1941621": "6ca81523e61405599a0c31dad80c58cc8c00dd4f3969b85ed771376c94b19d52",
     "community-1941496": "6f9b5d23274853c12019ec7be56c19625a6f5d58bb819ffb6cef5bdb0115ef4f",
-    "community-1941456": "137df1f3a758b23035e929e62a8c24edf287723c74d550a4f5a0247bcba7765b",
+    "community-1941456": "ffced2fb616e0309f39839148cc07deb077d65d0aeebe03aa892057bc006a40e",
     "community-1941251": "d23fed6f6524094f87aeeae74c36ff1717ef0eef7edda81c6af75b2764ccfed5",
-    "community-1940933": "f5a90bc4498fd1afe412129c268c4d305acb01719fea5354bfebe69852d0995a",
-    "community-1940829": "9f975b88ce356ae13d84ae7a905c641fd4245afe344a76cf8e232d8b0741e5ce",
-    "community-1940789": "5a357dcfc8be3e5074ce148ba013dc0bb8ff78db3ffcb3a11dcf60f2f1929002",
+    "community-1940933": "aa3fcf7503a351bb82d4a166b50d20c560e7ba432b66f4c41783fc0a4d31d703",
+    "community-1940829": "b700321a89dfc239978781d86915de61205369af4cb78a9e1ebd7f4edf4f597d",
+    "community-1940789": "1c9a3032974e9a797cc08e23f490ca09c40dd6ebd50754d0d3dacf5e3c88bc8d",
     "tracker-26e6db57c5d6f67e55d6": "3c2f5d625d5a3c9d27922363e6eb789ced31fb800a0973b4880583192ae0f213",
     "tracker-98ec1973b60d54a36cb8": "3e48775d84029aab77da9156009a8562cea836dbe320279b1d8c4e75b735d2db",
     "tracker-f58af4e01e10dd2cd296": "d018e6f7302ed0198a0a16b1ca0e9cce46c83267dacb5d99bab6c27e3e6b3a35",
     "tracker-00c51c5bc35e0ce96f18": "c9ae8e26a680512d80100222ac7dbbeff35578f4d9d7c313c9a631848d5166ef",
     "tracker-17dcb34f8043890db55f": "631050c48f410e96c735c8fcc6bbb41f4bcfa6d2e9483ec436d6405367d43bec",
-    "tracker-5136c797d6f21fe50081": "3efadd3720081afd3c33132a1279b951a5ae663020ddb59e23d7447369eff657"
+    "tracker-5136c797d6f21fe50081": "3efadd3720081afd3c33132a1279b951a5ae663020ddb59e23d7447369eff657",
+    "help-830d2e09734b93f1633b": "24e92001ceb6cd6a6326898679e0e1a13054eb7038c01f2eddff7bbcf56b2a2c",
+    "community-1941521": "68bc80b3b56b8506cc080ad3b099827843446db49db018f5dd03b08f1a0cd7bf",
+    "community-1940798": "0b3438fe3d7e7a611e1975b4622142fb64b5f25dcaa08939c8828e30911a3e9f",
+    "community-1942503": "b3d7017b3fcce91ba77c6c9319d975b662c84321883f111c7e204778a293f06f",
+    "community-1941517": "143d68714b3c8626641f8b58ce4f77a761e67c6a7ac7891cee7bffd92f5f2e49"
   },
   "events": [
     {
@@ -378,6 +385,56 @@
       ],
       "notified_statuses": [
         "confirmed"
+      ]
+    },
+    {
+      "id": "BANKED-20260906-A98006CD",
+      "type": "banked_reset",
+      "status": "banked",
+      "scope": "shared_codex_work",
+      "confidence": 97,
+      "first_seen": "2026-09-08T22:00:54.999095+00:00",
+      "last_seen": "2026-09-08T22:00:54.999180+00:00",
+      "expected_at": "2026-09-06T03:00:00+00:00",
+      "anchor_at": "2026-09-06T03:00:00+00:00",
+      "sources": [
+        {
+          "signal_id": "community-1941456",
+          "source_kind": "community",
+          "source_name": "OpenAI Developer Community / merefield",
+          "url": "https://community.openai.com/t/1389878/34",
+          "created_at": "2026-09-05T09:44:00.944Z",
+          "confidence": 97,
+          "evidence": "and to celebrate this: x.com Tibo @thsottiaux Some Plus and Business users won't yet get access to Astra today, we've got you covered with a banked reset. Lands by end of day and if you create your account by 8pm PT then you'll get it too. 8:57 PM - 4 Sep 2026 6.5K 180 and x.com Tibo @thsottiaux Because we are beyond happy to have Astra rolled out today ahead of schedule and you have been super patient with us (not really, but it’s ok!)… we will do the full banked reset today too for all Plus, Pro and Business users. Lands end of day. Happy Astra day and enjoy a 12:39 AM - 5 Sep 2026 21K 930 I’ve added a working reset button to Codexometer GitHub Release v0.11.4 · merefield/codexometer Highl"
+        }
+      ],
+      "notified_statuses": [
+        "banked"
+      ]
+    },
+    {
+      "id": "BANKED-20260903-05BBF343",
+      "type": "banked_reset",
+      "status": "banked",
+      "scope": "shared_codex_work",
+      "confidence": 97,
+      "first_seen": "2026-09-08T22:00:55.026305+00:00",
+      "last_seen": "2026-09-08T22:00:55.026388+00:00",
+      "expected_at": null,
+      "anchor_at": "2026-09-03T23:22:27.366000+00:00",
+      "sources": [
+        {
+          "signal_id": "community-1940789",
+          "source_kind": "community",
+          "source_name": "OpenAI Developer Community / sam.saffron",
+          "url": "https://community.openai.com/t/1394703/10",
+          "created_at": "2026-09-03T23:22:27.366Z",
+          "confidence": 97,
+          "evidence": "Codex is coming very soon! x.com Tibo @thsottiaux We will give one banked reset for every day you don't have access to Astra on your paid ChatGPT plan, starting today. Team is moving mountains to give access as fast as we can. First one will land in ~ 3 hours. There is still time to create your account if you don't have one. 11:12 PM - 3 Sep 2026 3.4K 330 It looks like the team will be working all weekend to unlock this."
+        }
+      ],
+      "notified_statuses": [
+        "banked"
       ]
     }
   ],
