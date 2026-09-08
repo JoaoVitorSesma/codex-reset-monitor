@@ -1,6 +1,6 @@
 # Codex Reset Monitor
 
-Monitor privado para detectar anúncios relevantes de reset de uso do OpenAI Codex e enviar alertas para um canal privado do Discord.
+Monitor público para detectar anúncios relevantes de reset de uso do OpenAI Codex e enviar alertas para um canal privado do Discord.
 
 ## Alertas
 
@@ -12,7 +12,7 @@ Monitor privado para detectar anúncios relevantes de reset de uso do OpenAI Cod
 ## Arquitetura
 
 ```text
-GitHub Actions (a cada 30 min)
+GitHub Actions (a cada 15 min)
         ↓
 OpenAI Help Center + OpenAI Developer Community
         ↓
@@ -25,7 +25,11 @@ Deduplicação em state/alerts.json
 Discord Webhook → #codex-alerts
 ```
 
-A frequência padrão é de **30 minutos**. Em repositório privado isso reduz o consumo mensal de minutos do GitHub Actions em comparação com uma execução a cada 15 minutos. Se a conta possuir uma franquia de Actions maior, o cron pode ser alterado depois.
+A frequência padrão é de **15 minutos**, executando nos minutos `:07`, `:22`, `:37` e `:52`. Como o repositório é público e usa runner GitHub-hosted padrão (`ubuntu-latest`), essas execuções não consomem a franquia mensal de minutos de Actions destinada a repositórios privados.
+
+## Heartbeat
+
+O workflow `Repository Heartbeat` roda uma vez por semana, aos domingos às 03:17 UTC, e atualiza `state/heartbeat.txt`. O objetivo é manter atividade periódica no repositório e reduzir o risco de o GitHub desabilitar workflows agendados após longos períodos sem atividade.
 
 ## Segurança
 
@@ -34,6 +38,8 @@ O webhook do Discord **não fica no código**. Ele deve existir apenas como GitH
 `DISCORD_WEBHOOK_URL`
 
 Nunca publique ou faça commit da URL do webhook. Se ela vazar, revogue o webhook no Discord e crie outro.
+
+Como o repositório é público, revise cuidadosamente qualquer Pull Request ou alteração externa antes de incorporá-la à `main`, especialmente mudanças em `.github/workflows/` ou em código que use secrets.
 
 ## Teste manual
 
