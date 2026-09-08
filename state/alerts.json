@@ -1,5 +1,407 @@
 {
-  "initialized": false,
-  "seen_alerts": [],
-  "source_fingerprints": {}
+  "version": 2,
+  "initialized": true,
+  "seen_signal_fingerprints": [
+    "c9b059820edd20a182012936d8ae9a255ddb444dcdc382a144375268a8b0a97b",
+    "c6f1341abb7a29ec718aed378e6d33f54b18ccfc0a891c61ce5ff1d4c3c067c1",
+    "331a475b2547006a293d0618134b45f0c113189e049ee3a94e7cff4fa065e86a",
+    "3050cbdfc60bf2a1249aae040eaeeb26406f53dbd39d362c9b9ef47ca56cf74b",
+    "98bc4a0cf38b416795e9d7ebe94a8a60c6e211de5e264badd6e414879d4b33b3",
+    "b4051df2bcf97365bacda08b7bbf51959eefa548746262bbf3bd2777149903f1",
+    "69b1681512fe6d519a1f52d76bfac1a88c1e4e6bf829e83ce341e0ffb65eeac4",
+    "46c3a71c0b464ce3e877889d13b7c2405bd239804c7293cc66e5678e352ad0bc",
+    "c2fb7bc206fa13779996d964e27e4f422075ae1fec1cf3a015b5bcd72b0089d8",
+    "76950b6bdc1f107dabcafbac0b6e7a09efc9b84c2a61c29ac00acdf62c8142ec",
+    "4e1ab50b6adcca2c05522376f240ad9107fda36a69f0dcf364931b417a3ebb06",
+    "e15eea55df37491e6403e18ab9a96919130f355529bed5776007d9a8836e73f6",
+    "b8743baa3af3d03c43190d4cf35179866ed02d5b3bddb240eb1595050021706f",
+    "db6cc1ca56582d46a4dbc142b7dceaa6ababbf7fda93cd37c8ab491f0fdc8ac8",
+    "c4f7026d4e2076190b1479e72ca11240883df6a715c66fa5a06099c10feca665",
+    "40265baaacd6129ad09de884151ffadb56cc746f0f749c35e8980e886f9252c6"
+  ],
+  "source_fingerprints": {
+    "help-b3cddfd7689721d621fc": "784744693a1ef54420c8b4de4aa3e72cf1b7a147168f2bfe606c61c8c37efebf",
+    "help-007399797fa6153ea87a": "e320709f2e70f96f5d7101c41c1c7aae595868680f0b7ad7478ec4dfbb9fe508",
+    "help-2c7ed34a326cbafc21df": "7e9cbc5a8f95014cb5029302713838a6c1ed09168e5e93089d51e0845059a044",
+    "help-8b51facec09d2b0dd2f7": "b751e10ef214ba0367b18fd9861c32107a5186865de52da4f31299bddc517736",
+    "help-ef8a532776439e142391": "f76d6229831af09aeb49e85f0ba384d55e85f55885f99d70cae2a24ad3d7b284",
+    "help-1d9bad1d53fdcf818b9d": "dc7fbed247a869f8940511380085586b9e1100b6e73ca3aa462e80e761fc8386",
+    "help-53521d6ed01dc115a4a9": "9df0c3fd85f207a8c2f92ec8bb10115a6b3b1e484d7b16d365ac5135482dda98",
+    "help-87f6342135d06b795b3f": "bc2cd5ad5bfaa03782d9713e4a0cce9d68b5adc9316cce154bb286255dfbe298",
+    "help-2de3144f3e2822d0ff69": "92724ee13e76b051d4ed04fddf6c9b1ac783978c8ebc89eb55da5c2fc67cc697",
+    "help-407c118ba0d3754d60f9": "721a483bb13c763b9d6f7b15b65463f44aec2c61cc0ce94028638b19f60b01fa",
+    "help-9bd44e682b1460c996fb": "b1e2eb059ac7bd68d9a218ec63dfc173ca74a8e28bce8344e34a2a15abd18c35",
+    "help-827adc619eabcef9b644": "8bc860ce4fd77bdb5abce51197bc50a02d54b200d8f92c35693e8b74908834b1",
+    "help-3e391bfd8b5ff6cbd0e4": "8673cdd58d340971bf1f8628d2d562e7a1c662f291cfaed287a701b6df7f3d07",
+    "help-33eb303e6f045f3b6b39": "99ef586da68c670516ce5a270e180a6793da2ffebc569a616a3f27f321d3332d",
+    "help-28b517a685f0f34f6c1a": "c81a0854c948cdafadc03bc0c17143fd061b0fbc630e8d7eeefb9f97eb7a1c85",
+    "help-ac8514ff7fccb29f17bb": "e29dfbdbb3b6a49be90fbee753bad59351055eeda940c28bf7a0a82783dc22b2",
+    "help-5ae2f35331894f4d88f3": "7bccb3a53191ac98eb45cd1c2ffd94b7536c4a93de77f3609951c3fa27c2c5f4",
+    "help-b413a001d7db703d8042": "f0e8b13006635a2e677c69d5df31073295277aeb61bc2707661c7544d4d59345",
+    "help-721e3aac8dd429364bc8": "7559a32c20ad09548ded0680adf6db120c1d33b483f913337276805dfa912264",
+    "help-113e5a07441ca66a23ee": "625f66cca3c1484a79538555c68a5d8dbd9d476c66c30c019696bda096c8083f",
+    "help-a1251107d9b6f6da5ec2": "6fe358dd91f3b454f099a83089686d711156b25ce084d2548d45198680d297af",
+    "help-71a697a9a71e4724acf4": "89c62ecaa4117775ddde55b4071240326b8be6ec4e43712729a0e30ee68acd3c",
+    "help-8a4d7b53249a8130519a": "48c1b1f9319c0cc3c68ab7ca0ae2227cd7cc08e84f7aa05b96d653aca9c669a2",
+    "help-823c219c009b900c71a6": "fe1eed0a7d4b94e17584a4fd906c1a64e2b05918982a274602cd3ea30085a173",
+    "help-2aea9989fe3abb3083f0": "907c03ced7bab185f8c5461d0a0ed6df2d046070a79d74b617d98698556a72cf",
+    "help-de17a0335c1a9c2b80ce": "3f6b3d1842d72d369b3dc988f67b95cbc055792c3d4efd4b7fdb1b7176649d78",
+    "help-4f4e5b2f8fad95beac67": "d4d2d0dd6ba3812ed1f0ead84d2c81bd285fdd7da6b67721ae417d3c95004622",
+    "community-1945503": "9f6d2a2b89e3ec39ec4b428fe81f7b6e387206a9ae68ddfa8b33bf141cfa4a90",
+    "community-1945364": "6fe0021cb87aeb19308b10e872f2b2f8aa91a9318005798b4711d616969e581f",
+    "community-1945279": "9880d22d5dcf29badbf6bffc3c3bf6cef820103056f16a8060dcf6fbf61ce2ed",
+    "community-1944948": "586fa65818f21f52cecda39f68bb3e1292461fbdd7cd0e42842521f74e8cf4c2",
+    "community-1944814": "a26c1997ed780d54ee49a3f4cf01daf6b542d4269f03a55b2af51a14b7ba9274",
+    "community-1944806": "f02a242f640a6048515b1e729c72f78ce1a0c2bbc8c34d660d4c54d4222a1399",
+    "community-1944776": "a1a35ebf8317b1b8bcd9cdbf4530f97bbca1eb6a4bba79ca3d1a290456ff8011",
+    "community-1944725": "70ac79249049d7fedc74ce96525f3041c9024e40c6698f93bba1419ac29f4f3c",
+    "community-1944721": "8e973c49d4a874dadbcb2484a138d051456e6fc1e1fd5f13d7176376ac686eb2",
+    "community-1944550": "28a338208b7d478aded455b97d2a8c4c6882d1f0cd7bb19289e4452808d976ed",
+    "community-1944303": "db950c2ee1010cb28066f19e80d9b28e44151e22a2c7e3c7ac5120d3f8498717",
+    "community-1944278": "5d4b9328b05b797bb5a5d6bc1ad1a2ad34e988af24969e9380eb9e693819f5eb",
+    "community-1944202": "131b48427347bf2b546d9245cf3c0825a25071341ab141825696b84c54657d06",
+    "community-1943894": "c689e3eb4d968814c7f6d8ec065bd50eab9261f94fb40687056cc4f0862b88c3",
+    "community-1943885": "1235266791050a75b0962f3bf4c1f4f95da7a06ac5476a18aa572cc37cc3ab7f",
+    "community-1943592": "b88c149693c64ab580187a558c1e634450d1c2f3f61e0abe41f21aca79f13aca",
+    "community-1943585": "3f022fc0b6db484d6a597f07b282f1b14e3dc7bd34184cb2ca4573915e60e09c",
+    "community-1943215": "3e8cd6adc9601dbd3d7921496d7838eb1ae2dc089c217f8dd19a5b13ddcd658d",
+    "community-1943052": "87c57f2801a2b251727e1d14881be156a3efa503dfcfe4b6663ff54379242aa6",
+    "community-1942849": "cd0bf1b21638beccf14116aeb99952ad0017903b7b151dd0d563e343f2add2c1",
+    "community-1942702": "8f78e712982da59d8232d9b8526347807b856195ebb0e79e6502d93b32b5038b",
+    "community-1942695": "7eabf27582c01ae8d5068a1dd97f1b44e05259555aa02dbe82cff9a0580b422b",
+    "community-1942690": "5ff03e49e15a3ad4056c967b9b1da5dbde75251a604c45893591f4de04cb91cc",
+    "community-1942285": "4844ee7a01987a6ea1c69164bc4975c824784ade7cc8e74c4a339d7bc6eefe70",
+    "community-1942020": "e1f7264c1cc5717a152cf4cd6314b7c2c87d3eac0c988bf0dae089c6b85fd7a9",
+    "community-1941978": "601a904601b80b0c9de72bf86d196a446e71fdd10e4aec59a17bf3338d117614",
+    "community-1941939": "644ed93c3b8ff94a9b99e6a12c293d11152c9528c0cc1ebc23157bef03c89ac4",
+    "community-1941882": "8edab43a7ea28a1101e50b8acb47ef1b24a92510bf5509abb453220119112371",
+    "community-1941801": "0f4d80601efd31da185b4719fc099cc3efa4ee25ea0221d78506bdb42cc89f3f",
+    "community-1941664": "a5061916d8a50d448f7a317bb7c9ba1eb7982bd868cfa768884a061421230f82",
+    "community-1941621": "6ca81523e61405599a0c31dad80c58cc8c00dd4f3969b85ed771376c94b19d52",
+    "community-1941496": "6f9b5d23274853c12019ec7be56c19625a6f5d58bb819ffb6cef5bdb0115ef4f",
+    "community-1941456": "137df1f3a758b23035e929e62a8c24edf287723c74d550a4f5a0247bcba7765b",
+    "community-1941251": "d23fed6f6524094f87aeeae74c36ff1717ef0eef7edda81c6af75b2764ccfed5",
+    "community-1940933": "f5a90bc4498fd1afe412129c268c4d305acb01719fea5354bfebe69852d0995a",
+    "community-1940829": "9f975b88ce356ae13d84ae7a905c641fd4245afe344a76cf8e232d8b0741e5ce",
+    "community-1940789": "5a357dcfc8be3e5074ce148ba013dc0bb8ff78db3ffcb3a11dcf60f2f1929002",
+    "tracker-26e6db57c5d6f67e55d6": "3c2f5d625d5a3c9d27922363e6eb789ced31fb800a0973b4880583192ae0f213",
+    "tracker-98ec1973b60d54a36cb8": "3e48775d84029aab77da9156009a8562cea836dbe320279b1d8c4e75b735d2db",
+    "tracker-f58af4e01e10dd2cd296": "d018e6f7302ed0198a0a16b1ca0e9cce46c83267dacb5d99bab6c27e3e6b3a35",
+    "tracker-00c51c5bc35e0ce96f18": "c9ae8e26a680512d80100222ac7dbbeff35578f4d9d7c313c9a631848d5166ef",
+    "tracker-17dcb34f8043890db55f": "631050c48f410e96c735c8fcc6bbb41f4bcfa6d2e9483ec436d6405367d43bec",
+    "tracker-5136c797d6f21fe50081": "3efadd3720081afd3c33132a1279b951a5ae663020ddb59e23d7447369eff657"
+  },
+  "events": [
+    {
+      "id": "BANKED-20260909-F65AB802",
+      "type": "banked_reset",
+      "status": "banked",
+      "scope": "unknown",
+      "confidence": 100,
+      "first_seen": "2026-09-08T19:24:46.295902+00:00",
+      "last_seen": "2026-09-08T19:24:46.302256+00:00",
+      "expected_at": "2026-09-09T05:00:00+00:00",
+      "anchor_at": "2026-09-09T05:00:00+00:00",
+      "sources": [
+        {
+          "signal_id": "help-2c7ed34a326cbafc21df",
+          "source_kind": "help",
+          "source_name": "OpenAI Help Center",
+          "url": "https://help.openai.com/en/articles/20001498-how-banked-codex-resets-work",
+          "created_at": "2026-09-08T19:24:32.599279+00:00",
+          "confidence": 100,
+          "evidence": "New accounts were eligible for a banked reset under the following conditions: September 3, 2026: New Plus, Pro and Business accounts (including new standard and premium seats) created before 10 PM PT."
+        },
+        {
+          "signal_id": "help-8b51facec09d2b0dd2f7",
+          "source_kind": "help",
+          "source_name": "OpenAI Help Center",
+          "url": "https://help.openai.com/en/articles/20001498-how-banked-codex-resets-work",
+          "created_at": "2026-09-08T19:24:32.599284+00:00",
+          "confidence": 100,
+          "evidence": "Existing Plus, Pro and Business users (standard, premium seats) in good standing received a banked reset both on September 3rd and September 4th."
+        },
+        {
+          "signal_id": "help-53521d6ed01dc115a4a9",
+          "source_kind": "help",
+          "source_name": "OpenAI Help Center",
+          "url": "https://help.openai.com/en/articles/20001498-how-banked-codex-resets-work",
+          "created_at": "2026-09-08T19:24:32.599296+00:00",
+          "confidence": 100,
+          "evidence": "Overview A banked reset is a one-time Codex usage-limit reset saved to your account until you use it or it expires."
+        },
+        {
+          "signal_id": "help-2de3144f3e2822d0ff69",
+          "source_kind": "help",
+          "source_name": "OpenAI Help Center",
+          "url": "https://help.openai.com/en/articles/20001498-how-banked-codex-resets-work",
+          "created_at": "2026-09-08T19:24:32.599307+00:00",
+          "confidence": 100,
+          "evidence": "Find and use a banked reset If you have a reset available: Open settings → usage on the desktop app, CLI, or on web."
+        },
+        {
+          "signal_id": "help-827adc619eabcef9b644",
+          "source_kind": "help",
+          "source_name": "OpenAI Help Center",
+          "url": "https://help.openai.com/en/articles/20001498-how-banked-codex-resets-work",
+          "created_at": "2026-09-08T19:24:32.599319+00:00",
+          "confidence": 100,
+          "evidence": "Using a full banked reset refreshes your 5-hour and weekly Codex usage windows and changes your weekly reset date."
+        },
+        {
+          "signal_id": "help-ac8514ff7fccb29f17bb",
+          "source_kind": "help",
+          "source_name": "OpenAI Help Center",
+          "url": "https://help.openai.com/en/articles/20001498-how-banked-codex-resets-work",
+          "created_at": "2026-09-08T19:24:32.599333+00:00",
+          "confidence": 100,
+          "evidence": "automatic resets These are different: A banked reset is saved to your account and must be applied by you."
+        },
+        {
+          "signal_id": "help-2aea9989fe3abb3083f0",
+          "source_kind": "help",
+          "source_name": "OpenAI Help Center",
+          "url": "https://help.openai.com/en/articles/20001498-how-banked-codex-resets-work",
+          "created_at": "2026-09-08T19:24:32.599387+00:00",
+          "confidence": 100,
+          "evidence": "We do not offer replacement resets, credits, refunds, or other compensation solely because you were ineligible for an offer, did not notice a correctly applied reset, or let an unused banked reset expire."
+        }
+      ],
+      "notified_statuses": [
+        "banked"
+      ]
+    },
+    {
+      "id": "BANKED-20260908-2F13C6BB",
+      "type": "banked_reset",
+      "status": "banked",
+      "scope": "global",
+      "confidence": 100,
+      "first_seen": "2026-09-08T19:24:46.297069+00:00",
+      "last_seen": "2026-09-08T19:24:46.300263+00:00",
+      "expected_at": null,
+      "anchor_at": "2026-09-08T19:24:32.599292+00:00",
+      "sources": [
+        {
+          "signal_id": "help-1d9bad1d53fdcf818b9d",
+          "source_kind": "help",
+          "source_name": "OpenAI Help Center",
+          "url": "https://help.openai.com/en/articles/20001498-how-banked-codex-resets-work",
+          "created_at": "2026-09-08T19:24:32.599292+00:00",
+          "confidence": 100,
+          "evidence": "Note: On September 7, 2026, we provided a global reset to Plus, Pro and Business users - this reset applies immediately to your account, and cannot be saved for later, and will not appear as a banked reset."
+        },
+        {
+          "signal_id": "help-5ae2f35331894f4d88f3",
+          "source_kind": "help",
+          "source_name": "OpenAI Help Center",
+          "url": "https://help.openai.com/en/articles/20001498-how-banked-codex-resets-work",
+          "created_at": "2026-09-08T19:24:32.599337+00:00",
+          "confidence": 100,
+          "evidence": "An automatic or global reset is applied directly to eligible usage limits and does not create a saved reset."
+        }
+      ],
+      "notified_statuses": [
+        "banked"
+      ]
+    },
+    {
+      "id": "BANKED-20260903-93A9D64F",
+      "type": "banked_reset",
+      "status": "banked",
+      "scope": "unknown",
+      "confidence": 97,
+      "first_seen": "2026-09-08T19:24:46.416620+00:00",
+      "last_seen": "2026-09-08T19:24:46.416698+00:00",
+      "expected_at": null,
+      "anchor_at": "2026-09-03T23:22:27.366000+00:00",
+      "sources": [
+        {
+          "signal_id": "community-1940789",
+          "source_kind": "community",
+          "source_name": "OpenAI Developer Community / sam.saffron",
+          "url": "https://community.openai.com/t/1394703/10",
+          "created_at": "2026-09-03T23:22:27.366Z",
+          "confidence": 97,
+          "evidence": "Codex is coming very soon! https://x.com/thsottiaux/status/2095651088502591861 x.com https://x.com/thsottiaux/status/2095651088502591861 Tibo https://x.com/thsottiaux/status/2095651088502591861 @thsottiaux We will give one banked reset for every day you don't have access to Astra on your paid Cha..."
+        }
+      ],
+      "notified_statuses": [
+        "banked"
+      ]
+    },
+    {
+      "id": "RESET-20260908-9C3F735B",
+      "type": "automatic_reset",
+      "status": "confirmed",
+      "scope": "global",
+      "confidence": 100,
+      "first_seen": "2026-09-08T19:24:46.417163+00:00",
+      "last_seen": "2026-09-08T19:24:46.417237+00:00",
+      "expected_at": null,
+      "anchor_at": "2026-09-08T04:05:00+00:00",
+      "sources": [
+        {
+          "signal_id": "tracker-26e6db57c5d6f67e55d6",
+          "source_kind": "tracker",
+          "source_name": "codexreset.org",
+          "url": "https://codexreset.org/codex-reset-history",
+          "created_at": "2026-09-08T04:05:00+00:00",
+          "confidence": 100,
+          "evidence": "confirmed forced reset. Global Codex quota reset. The author explicitly states that everything has been reset for everyone, indicating a completed shared/global quota reset rather than future intent, a personal window, or banked credit. Scope: Shared/global Codex quota for all users Verify source →"
+        }
+      ],
+      "notified_statuses": [
+        "confirmed"
+      ]
+    },
+    {
+      "id": "BANKED-20260908-B9E73B3D",
+      "type": "banked_reset",
+      "status": "banked",
+      "scope": "global_paid",
+      "confidence": 90,
+      "first_seen": "2026-09-08T19:24:46.417892+00:00",
+      "last_seen": "2026-09-08T19:24:46.417968+00:00",
+      "expected_at": "2026-09-08T01:00:00+00:00",
+      "anchor_at": "2026-09-08T01:00:00+00:00",
+      "sources": [
+        {
+          "signal_id": "tracker-98ec1973b60d54a36cb8",
+          "source_kind": "tracker",
+          "source_name": "codexreset.org",
+          "url": "https://codexreset.org/codex-reset-history",
+          "created_at": "2026-09-08T02:00:00+00:00",
+          "confidence": 90,
+          "evidence": "confirmed forced reset. Global Codex quota reset. The author explicitly announces a future global usage reset for all paid subscriptions and states that it will land around 6pm PST that day. This is a next-new-reset signal, not confirmation that the reset has already occurred. The reset appears to restore usage directly rather than create a redeemable banked reset. A monitored seven-day quota restoration observed at 2026-09-08T02:00:09.579Z corroborated the announced reset. Scope: Shared/global Codex usage for all paid subscriptions Verify source →"
+        }
+      ],
+      "notified_statuses": [
+        "banked"
+      ]
+    },
+    {
+      "id": "RESET-20260831-5E2537FA",
+      "type": "automatic_reset",
+      "status": "confirmed",
+      "scope": "global_paid",
+      "confidence": 100,
+      "first_seen": "2026-09-08T19:24:46.418589+00:00",
+      "last_seen": "2026-09-08T19:24:46.418663+00:00",
+      "expected_at": null,
+      "anchor_at": "2026-08-31T02:34:00+00:00",
+      "sources": [
+        {
+          "signal_id": "tracker-f58af4e01e10dd2cd296",
+          "source_kind": "tracker",
+          "source_name": "codexreset.org",
+          "url": "https://codexreset.org/codex-reset-history",
+          "created_at": "2026-08-31T02:34:00+00:00",
+          "confidence": 100,
+          "evidence": "confirmed forced reset. Global Codex quota reset. The author explicitly states that usage has now been reset for all paid subscriptions for ChatGPT Work and Codex. This describes a completed platform-wide reset for the specified paid subscription scope, not a future signal, personal quota window, or promotional credit. Scope: All paid subscriptions for ChatGPT Work and Codex Verify source →"
+        }
+      ],
+      "notified_statuses": [
+        "confirmed"
+      ]
+    },
+    {
+      "id": "BANKED-20260831-A265F6C3",
+      "type": "banked_reset",
+      "status": "banked",
+      "scope": "global_paid",
+      "confidence": 90,
+      "first_seen": "2026-09-08T19:24:46.419263+00:00",
+      "last_seen": "2026-09-08T19:24:46.419336+00:00",
+      "expected_at": null,
+      "anchor_at": "2026-08-31T02:29:00+00:00",
+      "sources": [
+        {
+          "signal_id": "tracker-00c51c5bc35e0ce96f18",
+          "source_kind": "tracker",
+          "source_name": "codexreset.org",
+          "url": "https://codexreset.org/codex-reset-history",
+          "created_at": "2026-08-31T02:29:00+00:00",
+          "confidence": 90,
+          "evidence": "confirmed forced reset. Global Codex quota reset. The author explicitly states that usage has now been reset for all paid subscriptions for ChatGPT Work and Codex. This describes a completed shared/global quota reset, not future intent, personal quota timing, promotional credits, or a banked reset. Scope: All paid subscriptions for ChatGPT Work and Codex Verify source →"
+        }
+      ],
+      "notified_statuses": [
+        "banked"
+      ]
+    },
+    {
+      "id": "BANKED-20260829-605713B3",
+      "type": "banked_reset",
+      "status": "banked",
+      "scope": "global_paid",
+      "confidence": 90,
+      "first_seen": "2026-09-08T19:24:46.420078+00:00",
+      "last_seen": "2026-09-08T19:24:46.420150+00:00",
+      "expected_at": null,
+      "anchor_at": "2026-08-29T20:43:00+00:00",
+      "sources": [
+        {
+          "signal_id": "tracker-17dcb34f8043890db55f",
+          "source_kind": "tracker",
+          "source_name": "codexreset.org",
+          "url": "https://codexreset.org/codex-reset-history",
+          "created_at": "2026-08-29T20:43:00+00:00",
+          "confidence": 90,
+          "evidence": "confirmed compensation. Global Codex compensation reset. The author explicitly states twice that usage is being reset for all paid users of Codex and ChatGPT Work. This is a current, platform-wide compensatory reset associated with usage-consuming bugs and fixes, not a future signal, personal quota window, promotional credit, or banked reset. Scope: Usage limits for all paid users of Codex and ChatGPT Work Verify source →"
+        }
+      ],
+      "notified_statuses": [
+        "banked"
+      ]
+    },
+    {
+      "id": "RESET-20260827-7164B85B",
+      "type": "automatic_reset",
+      "status": "confirmed",
+      "scope": "global",
+      "confidence": 100,
+      "first_seen": "2026-09-08T19:24:46.420798+00:00",
+      "last_seen": "2026-09-08T19:24:46.420872+00:00",
+      "expected_at": null,
+      "anchor_at": "2026-08-27T16:35:00+00:00",
+      "sources": [
+        {
+          "signal_id": "tracker-5136c797d6f21fe50081",
+          "source_kind": "tracker",
+          "source_name": "codexreset.org",
+          "url": "https://codexreset.org/codex-reset-history",
+          "created_at": "2026-08-27T16:35:00+00:00",
+          "confidence": 100,
+          "evidence": "confirmed forced reset. Global Codex quota reset. The author explicitly says there is “brand new usage for all ChatGPT Work and Codex users” and attributes it to a button press. Despite the playful framing about sleep and youth, this indicates a completed shared/global quota reset, not merely future intent or a personal quota window. Scope: All ChatGPT Work and Codex users Verify source →"
+        }
+      ],
+      "notified_statuses": [
+        "confirmed"
+      ]
+    }
+  ],
+  "health": {
+    "openai_help": {
+      "consecutive_failures": 0,
+      "last_success": "2026-09-08T19:24:32.600061+00:00",
+      "last_failure": null,
+      "last_error": null,
+      "degraded_alert_sent": false
+    },
+    "openai_community": {
+      "consecutive_failures": 0,
+      "last_success": "2026-09-08T19:24:41.365537+00:00",
+      "last_failure": null,
+      "last_error": null,
+      "degraded_alert_sent": false
+    },
+    "codexreset": {
+      "consecutive_failures": 0,
+      "last_success": "2026-09-08T19:24:46.292727+00:00",
+      "last_failure": null,
+      "last_error": null,
+      "degraded_alert_sent": false
+    }
+  }
 }
