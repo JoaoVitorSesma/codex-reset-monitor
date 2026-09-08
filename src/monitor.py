@@ -122,9 +122,6 @@ def trusted_context(username: str, text: str, raw: str) -> bool:
 
 def classify(text: str, raw: str, username: str, source_kind: str) -> str | None:
     joined = f"{text} {raw}".lower()
-
-    # Banked reset always wins over generic reset wording unless there is
-    # separate, explicit global/hard-reset language.
     banked = contains_any(joined, BANKED_PATTERNS)
     automatic = contains_any(joined, AUTO_CONFIRMED_PATTERNS)
     likely = contains_any(joined, AUTO_LIKELY_PATTERNS)
@@ -166,13 +163,12 @@ def discord_payload(level: str, title: str, body: str, source_url: str) -> dict:
         "test": "Webhook do Discord e GitHub Actions estão funcionando corretamente.",
     }[level]
 
-    description = body[:1500]
     return {
         "username": "Codex Reset Monitor",
         "embeds": [
             {
                 "title": heading,
-                "description": description,
+                "description": body[:1500],
                 "color": color,
                 "fields": [
                     {"name": "Fonte", "value": source_url[:1000], "inline": False},
@@ -196,25 +192,26 @@ def fetch_help() -> list[dict]:
     response = requests.get(HELP_URL, headers=HEADERS, timeout=30)
     response.raise_for_status()
     text = clean_text(response.text)
-    # Keep only reset-relevant neighborhoods to avoid unrelated page changes.
     sentences = re.split(r"(?<=[.!?])\s+", text)
     relevant = [
-        s for s in sentences
-        if "reset" in s.lower() or "usage limit" in s.lower() or "september" in s.lower()
+        s.strip() for s in sentences
+        if ("reset" in s.lower() or "usage limit" in s.lower()) and len(s.strip()) >= 25
     ]
-    relevant_text = " ".join(relevant)
-    if not relevant_text:
-        return []
-    return [{
-        "id": "help-banked-resets",
-        "title": "OpenAI Help Center — banked/automatic Codex resets",
-        "text": relevant_text,
-        "raw": response.text,
-        "username": "OpenAI Help Center",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "url": HELP_URL,
-        "source_kind": "help",
-    }]
+
+    items = []
+    for sentence in relevant:
+        sentence_id = sha(sentence.lower())[:20]
+        items.append({
+            "id": f"help-{sentence_id}",
+            "title": "OpenAI Help Center — Codex reset update",
+            "text": sentence,
+            "raw": sentence,
+            "username": "OpenAI Help Center",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "url": HELP_URL,
+            "source_kind": "help",
+        })
+    return items
 
 
 def fetch_community() -> list[dict]:
@@ -246,7 +243,6 @@ def fetch_community() -> list[dict]:
             title = topic.get("title") or f"OpenAI Developer Community post {post_id}"
             raw = post.get("blurb", "")
 
-            # Fetch full post to preserve embedded quoted X/Twitter text when available.
             try:
                 p = requests.get(
                     f"{COMMUNITY_BASE}/posts/{post_id}.json",
@@ -308,23 +304,16 @@ def main() -> int:
         except Exception as exc:
             errors.append(f"{fetcher.__name__}: {exc}")
 
-    if errors:
-        for error in errors:
-            print(error, file=sys.stderr)
+    for error in errors:
+        print(error, file=sys.stderr)
 
     seen = set(state.get("seen_alerts", []))
     fingerprints = state.setdefault("source_fingerprints", {})
     alerts_to_send = []
 
     for item in items:
-        level = classify(
-            item["text"],
-            item["raw"],
-            item["username"],
-            item["source_kind"],
-        )
+        level = classify(item["text"], item["raw"], item["username"], item["source_kind"])
         current_fp = sha(item["text"])
-        previous_fp = fingerprints.get(item["id"])
         fingerprints[item["id"]] = current_fp
 
         if not level:
@@ -334,15 +323,8 @@ def main() -> int:
         if alert_fp in seen:
             continue
 
-        # First scheduled run establishes a baseline so old announcements do not
-        # flood Discord immediately after installation.
         if not state.get("initialized", False):
             seen.add(alert_fp)
-            continue
-
-        # Help Center is a mutable page. Only alert from it when the relevant
-        # content actually changed since the previous run.
-        if item["source_kind"] == "help" and previous_fp == current_fp:
             continue
 
         alerts_to_send.append((item, level, alert_fp))
@@ -355,8 +337,7 @@ def main() -> int:
         return 0
 
     for item, level, alert_fp in alerts_to_send:
-        payload = discord_payload(level, item["title"], item["text"], item["url"])
-        send_discord(payload)
+        send_discord(discord_payload(level, item["title"], item["text"], item["url"]))
         seen.add(alert_fp)
         print(f"Sent {level} alert: {item['title']} ({item['url']})")
 
