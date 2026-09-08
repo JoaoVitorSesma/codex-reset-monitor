@@ -1,0 +1,57 @@
+name: Codex Reset Monitor
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      send_test:
+        description: "Send a Discord test notification"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: codex-reset-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run monitor
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          TEST_DISCORD: ${{ github.event_name == 'workflow_dispatch' && inputs.send_test && 'true' || 'false' }}
+        run: python src/monitor.py
+
+      - name: Persist monitor state
+        if: github.event_name != 'workflow_dispatch'
+        run: |
+          if git diff --quiet -- state/alerts.json; then
+            echo "No state changes to persist."
+            exit 0
+          fi
+
+          git config user.name "codex-reset-monitor[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/alerts.json
+          git commit -m "chore: update monitor state"
+          git push
