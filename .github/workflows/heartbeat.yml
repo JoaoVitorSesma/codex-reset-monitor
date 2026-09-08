@@ -1,0 +1,40 @@
+name: Repository Heartbeat
+
+on:
+  schedule:
+    - cron: "17 3 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: codex-reset-heartbeat
+  cancel-in-progress: false
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Update heartbeat
+        run: |
+          mkdir -p state
+          printf '%s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" > state/heartbeat.txt
+
+      - name: Commit heartbeat
+        run: |
+          if git diff --quiet -- state/heartbeat.txt; then
+            echo "Heartbeat unchanged; nothing to commit."
+            exit 0
+          fi
+
+          git config user.name "codex-reset-monitor[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/heartbeat.txt
+          git commit -m "chore: weekly monitor heartbeat"
+          git push
