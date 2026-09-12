@@ -39,7 +39,7 @@ A V2 não usa X API paga e não usa LLM/API externa. O objetivo é manter o sist
 
 ## Fontes e confiança
 
-O monitor atribui níveis de confiança diferentes às fontes. OpenAI Help Center e sinais diretamente ligados à equipe OpenAI/Codex recebem maior peso. `codexreset.org` funciona como fonte secundária de redundância/corroboração e não substitui as fontes da OpenAI.
+O monitor atribui níveis de confiança diferentes às fontes. OpenAI Help Center e sinais diretamente ligados à equipe OpenAI/Codex recebem maior peso. `codexreset.org` funciona como fonte secundária de redundância/corroboração e não substitui as fontes da OpenAI.
 
 O classificador também separa explicitamente:
 
@@ -68,7 +68,17 @@ Um evento pode evoluir de 🟡 para 🟢 sem ser confundido com um reset diferen
 
 ## Horários em BRT
 
-A V2 interpreta horários concretos em PT/PST/PDT, como `6pm PST`, além de janelas relativas simples, como `within the next hour`. Quando existe horário confiável, o Discord mostra o equivalente em **BRT (America/Sao_Paulo)** e o tempo aproximado restante.
+A V2 interpreta horários concretos em PT/PST/PDT, como `6pm PST`, além de janelas relativas simples, como `within the next hour`.
+
+Os alertas do Discord usam rótulos diferentes para evitar apresentar uma previsão como se fosse um fato confirmado:
+
+- 🟡 eventos futuros exibem **Horário previsto do reset** e, quando aplicável, **Tempo restante**;
+- 🟢 eventos concluídos exibem **Horário do reset** quando a fonte fornece um timestamp confiável;
+- quando só existe um horário previamente anunciado, ele aparece como **Horário anunciado do reset**;
+- quando a fonte não informa um horário utilizável, o monitor mostra explicitamente **Não informado pela fonte** em vez de estimar;
+- todos os alertas exibem **Detectado pelo monitor**, permitindo distinguir o momento do evento do momento em que o watcher o encontrou.
+
+Todos esses horários são apresentados em **BRT (America/Sao_Paulo)**.
 
 ## Monitoramento da saúde das fontes
 
@@ -97,6 +107,10 @@ Os testes atuais cobrem:
 - banked reset → 🟣;
 - perguntas/ruído → ignorar;
 - conversão PT/PST/PDT → BRT;
+- horário efetivo do reset quando fornecido pelo ledger;
+- horário previsto em alertas futuros;
+- fallback `Não informado pela fonte` quando não existe horário confiável;
+- horário de detecção do watcher;
 - deduplicação e upgrade 🟡 → 🟢;
 - parser do ledger secundário;
 - alerta de saúde somente após falhas consecutivas.
