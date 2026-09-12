@@ -40,7 +40,7 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           TEST_DISCORD: ${{ github.event_name == 'workflow_dispatch' && inputs.send_test && 'true' || 'false' }}
-        run: python src/monitor.py
+        run: python src/run_monitor.py
 
       - name: Persist monitor state
         if: github.event_name != 'workflow_dispatch' || inputs.send_test == false
