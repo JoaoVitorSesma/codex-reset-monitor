@@ -2,27 +2,28 @@
   "version": 2,
   "initialized": true,
   "seen_signal_fingerprints": [
-    "2dfbe3e40378666b8047e5f8f64daf0a6052464c95cb38f6cbf7b522057c83f7",
-    "b4051df2bcf97365bacda08b7bbf51959eefa548746262bbf3bd2777149903f1",
-    "40265baaacd6129ad09de884151ffadb56cc746f0f749c35e8980e886f9252c6",
-    "3050cbdfc60bf2a1249aae040eaeeb26406f53dbd39d362c9b9ef47ca56cf74b",
-    "cb4c86fef99ffc58a2d6cce887a68bf9c69552aa38e94003da8cd009c4301544",
-    "30b9542e9965d10f9cbbfebc4670d19928f1e55a1b2dc647a6055997d0165230",
-    "b8743baa3af3d03c43190d4cf35179866ed02d5b3bddb240eb1595050021706f",
-    "46c3a71c0b464ce3e877889d13b7c2405bd239804c7293cc66e5678e352ad0bc",
-    "db6cc1ca56582d46a4dbc142b7dceaa6ababbf7fda93cd37c8ab491f0fdc8ac8",
-    "69b1681512fe6d519a1f52d76bfac1a88c1e4e6bf829e83ce341e0ffb65eeac4",
-    "c6f1341abb7a29ec718aed378e6d33f54b18ccfc0a891c61ce5ff1d4c3c067c1",
-    "4e1ab50b6adcca2c05522376f240ad9107fda36a69f0dcf364931b417a3ebb06",
-    "c9b059820edd20a182012936d8ae9a255ddb444dcdc382a144375268a8b0a97b",
-    "4a886214693ce59a4757ef06bdfd36fd4286c0dcb91894a47aefd79026a3fe3b",
     "331a475b2547006a293d0618134b45f0c113189e049ee3a94e7cff4fa065e86a",
-    "98bc4a0cf38b416795e9d7ebe94a8a60c6e211de5e264badd6e414879d4b33b3",
-    "e15eea55df37491e6403e18ab9a96919130f355529bed5776007d9a8836e73f6",
-    "c2fb7bc206fa13779996d964e27e4f422075ae1fec1cf3a015b5bcd72b0089d8",
-    "a3168b4ba2305ab78a2ae4ee4fa9845d35f8b098a2c414f8025d77f3262140b8",
+    "c6f1341abb7a29ec718aed378e6d33f54b18ccfc0a891c61ce5ff1d4c3c067c1",
+    "db6cc1ca56582d46a4dbc142b7dceaa6ababbf7fda93cd37c8ab491f0fdc8ac8",
     "c4f7026d4e2076190b1479e72ca11240883df6a715c66fa5a06099c10feca665",
-    "76950b6bdc1f107dabcafbac0b6e7a09efc9b84c2a61c29ac00acdf62c8142ec"
+    "a3168b4ba2305ab78a2ae4ee4fa9845d35f8b098a2c414f8025d77f3262140b8",
+    "3050cbdfc60bf2a1249aae040eaeeb26406f53dbd39d362c9b9ef47ca56cf74b",
+    "98bc4a0cf38b416795e9d7ebe94a8a60c6e211de5e264badd6e414879d4b33b3",
+    "69b1681512fe6d519a1f52d76bfac1a88c1e4e6bf829e83ce341e0ffb65eeac4",
+    "e15eea55df37491e6403e18ab9a96919130f355529bed5776007d9a8836e73f6",
+    "46c3a71c0b464ce3e877889d13b7c2405bd239804c7293cc66e5678e352ad0bc",
+    "30b9542e9965d10f9cbbfebc4670d19928f1e55a1b2dc647a6055997d0165230",
+    "4e1ab50b6adcca2c05522376f240ad9107fda36a69f0dcf364931b417a3ebb06",
+    "b89d5ad4e2d27a3181b43b438d4018199242404ffdf30e2279558d689999b4de",
+    "76950b6bdc1f107dabcafbac0b6e7a09efc9b84c2a61c29ac00acdf62c8142ec",
+    "4a886214693ce59a4757ef06bdfd36fd4286c0dcb91894a47aefd79026a3fe3b",
+    "40265baaacd6129ad09de884151ffadb56cc746f0f749c35e8980e886f9252c6",
+    "c2fb7bc206fa13779996d964e27e4f422075ae1fec1cf3a015b5bcd72b0089d8",
+    "2dfbe3e40378666b8047e5f8f64daf0a6052464c95cb38f6cbf7b522057c83f7",
+    "c9b059820edd20a182012936d8ae9a255ddb444dcdc382a144375268a8b0a97b",
+    "cb4c86fef99ffc58a2d6cce887a68bf9c69552aa38e94003da8cd009c4301544",
+    "b4051df2bcf97365bacda08b7bbf51959eefa548746262bbf3bd2777149903f1",
+    "b8743baa3af3d03c43190d4cf35179866ed02d5b3bddb240eb1595050021706f"
   ],
   "source_fingerprints": {
     "help-b3cddfd7689721d621fc": "784744693a1ef54420c8b4de4aa3e72cf1b7a147168f2bfe606c61c8c37efebf",
@@ -237,7 +238,8 @@
     "community-1955368": "c1e997dc67f2678b1c337b0bf92d9b35fc5cbc8f314c8c2576615c29dfe8d5ac",
     "community-1955343": "f3febf3153becd2a924024660fe532f221b9efb0c1b57210320fc18013b2bc1b",
     "community-1955563": "b4837ad0eb60d5ff2778e7f2dc4487f5612a16b446b554a79985bb0b8584db00",
-    "community-1955488": "c201726f5ffc52e237a541eba58d537a1ae89c9bafca7f17bca64097b3521df7"
+    "community-1955488": "c201726f5ffc52e237a541eba58d537a1ae89c9bafca7f17bca64097b3521df7",
+    "community-1955740": "25e01297e6779c85af995dcd0fa0f2bbec34e62c967e1663c187c0160797a819"
   },
   "events": [
     {
@@ -610,6 +612,31 @@
       ],
       "notified_statuses": [
         "confirmed"
+      ]
+    },
+    {
+      "id": "BANKED-20260922-68507FCF",
+      "type": "banked_reset",
+      "status": "banked",
+      "scope": "unknown",
+      "confidence": 97,
+      "first_seen": "2026-09-22T20:09:43.057201+00:00",
+      "last_seen": "2026-09-22T20:09:43.057281+00:00",
+      "expected_at": null,
+      "anchor_at": "2026-09-22T18:28:05.204000+00:00",
+      "sources": [
+        {
+          "signal_id": "community-1955740",
+          "source_kind": "community",
+          "source_name": "OpenAI Developer Community / VeitB",
+          "url": "https://community.openai.com/t/1399925/4",
+          "created_at": "2026-09-22T18:28:05.204Z",
+          "confidence": 97,
+          "evidence": "As a cherry on top: And one more thing. We are loading a banked reset into all accounts of our Plus, Pro and Business users. Let’s go! x.com Tibo @thsottiaux GPT-6 Sol and Luna are out. Not only are they a very significant improvement across the board, but also in writing and general \"you know when you try it\" quality. We are also permanently reducing the API price by 50% making both of them viable for a ton of new usecases and x.com/thsottiaux/sta… Tibo @thsottiaux We have been focusing on efficiency and intelligence for all. Very proud of the team. Only possible when you have incredible models at the top end of the capability that you can then use to make a big difference in everything els"
+        }
+      ],
+      "notified_statuses": [
+        "banked"
       ]
     }
   ],
