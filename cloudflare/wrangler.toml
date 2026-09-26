@@ -1,0 +1,12 @@
+name = "codex-reset-scheduler"
+main = "worker.js"
+compatibility_date = "2026-09-26"
+
+[triggers]
+crons = ["7,22,37,52 * * * *"]
+
+[vars]
+GITHUB_REPOSITORY = "JoaoVitorSesma/codex-reset-monitor"
+GITHUB_WORKFLOW = "monitor.yml"
+GITHUB_REF = "main"
+WATCHDOG_STALE_MINUTES = "40"

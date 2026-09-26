@@ -9,10 +9,13 @@ Monitor público e gratuito para detectar anúncios relevantes de reset de uso d
 - 🟣 **BANKED RESET CODEX — AÇÃO MANUAL** — crédito de reset que precisa ser resgatado manualmente em `Settings → Usage`.
 - ⚪ Rumores, perguntas de usuários, previsões puramente estatísticas e sinais fracos são ignorados.
 
-## Arquitetura V2
+## Arquitetura V3
 
 ```text
-GitHub Actions (:07, :22, :37, :52)
+Cloudflare Cron (:07, :22, :37, :52) ──→ workflow_dispatch
+                    │
+                    ▼
+GitHub Actions ← GitHub schedule (fallback)
         ↓
 ┌───────────────────────────────┐
 │ OpenAI Help Center            │
@@ -35,11 +38,15 @@ event engine + deduplicação entre fontes
 Discord Webhook → #codex-alerts
 ```
 
-A V2 não usa X API paga e não usa LLM/API externa. O objetivo é manter o sistema sob nosso controle e com custo recorrente esperado de **R$ 0**.
+A V3 não usa X API paga e não usa LLM/API externa. O objetivo é manter o sistema sob nosso controle e com custo recorrente esperado de **R$ 0**.
+
+A camada Cloudflare é um relógio externo opcional e independente do scheduler do GitHub. O código já está em `cloudflare/`, mas precisa ser implantado uma única vez na conta Cloudflare do proprietário para se tornar o gatilho principal. Até essa implantação, o cron nativo do GitHub continua operando normalmente.
 
 ## Fontes e confiança
 
-O monitor atribui níveis de confiança diferentes às fontes. OpenAI Help Center e sinais diretamente ligados à equipe OpenAI/Codex recebem maior peso. `codexreset.org` funciona como fonte secundária de redundância/corroboração e não substitui as fontes da OpenAI.
+O monitor atribui níveis de confiança diferentes às fontes. OpenAI Help Center e sinais diretamente ligados à equipe OpenAI/Codex recebem maior peso. `codexreset.org` e `willcodexresets.com` funcionam como fontes secundárias independentes de redundância/corroboração e não substituem as fontes da OpenAI.
+
+Antes da classificação, a V3 normaliza pontuação Unicode e contrações comuns. Assim, formas equivalentes como `we’ll reset`, `we'll reset` e `we will reset` chegam ao classificador com a mesma intenção. A decisão também combina ação + temporalidade + escopo, em vez de depender somente de frases exatas.
 
 O classificador também separa explicitamente:
 
@@ -53,7 +60,7 @@ A classificação é determinística e possui testes de regressão.
 
 ## Event engine e deduplicação
 
-Em vez de tratar cada URL como um alerta independente, a V2 agrupa sinais compatíveis no mesmo evento lógico. Assim, um anúncio do Tibo, uma reprodução na Community e uma confirmação no tracker podem virar um único evento.
+Em vez de tratar cada URL como um alerta independente, a V3 agrupa sinais compatíveis no mesmo evento lógico. Assim, um anúncio do Tibo, uma reprodução na Community e uma confirmação no tracker podem virar um único evento.
 
 Exemplo:
 
@@ -68,7 +75,7 @@ Um evento pode evoluir de 🟡 para 🟢 sem ser confundido com um reset diferen
 
 ## Horários em BRT
 
-A V2 interpreta horários concretos em PT/PST/PDT, como `6pm PST`, além de janelas relativas simples, como `within the next hour`.
+A V3 interpreta horários concretos em PT/PST/PDT, como `6pm PST`, além de janelas relativas simples, como `within the next hour`.
 
 Os alertas do Discord usam rótulos diferentes para evitar apresentar uma previsão como se fosse um fato confirmado:
 
@@ -82,7 +89,9 @@ Todos esses horários são apresentados em **BRT (America/Sao_Paulo)**.
 
 ## Monitoramento da saúde das fontes
 
-O monitor mantém estado por fonte. Uma falha isolada não gera ruído. Se uma fonte falhar por **8 execuções consecutivas** (aproximadamente duas horas com o cron atual), o Discord recebe um alerta de cobertura degradada. Quando a fonte volta a responder, é enviado um aviso de recuperação.
+O monitor mantém estado por fonte e atualiza `last_success` em toda execução bem-sucedida. Uma falha isolada não gera ruído. O alerta de cobertura degradada ocorre após **3 falhas consecutivas** ou quando a primeira falha persiste por aproximadamente **45 minutos**. Quando a fonte volta a responder, é enviado um aviso de recuperação.
+
+O Worker externo também atua como watchdog do próprio GitHub Actions: se a execução principal ficar atrasada além da janela configurada, ele pode alertar diretamente no Discord e continuar tentando disparar o workflow.
 
 Isso diferencia:
 
@@ -112,12 +121,21 @@ Os testes atuais cobrem:
 - fallback `Não informado pela fonte` quando não existe horário confiável;
 - horário de detecção do watcher;
 - deduplicação e upgrade 🟡 → 🟢;
-- parser do ledger secundário;
-- alerta de saúde somente após falhas consecutivas.
+- parser resiliente do ledger secundário;
+- segundo tracker independente;
+- normalização de `we’ll` / `we'll` / `we will`;
+- regressão do reset perdido de 26/09/2026;
+- exemplos/documentação do Help Center não virarem falsos alertas;
+- alerta de saúde por falhas consecutivas ou tempo degradado;
+- sintaxe do Worker Cloudflare.
 
-## Frequência e custo
+## Frequência, scheduler externo e custo
 
-O monitor executa a cada **15 minutos**, nos minutos `:07`, `:22`, `:37` e `:52`. Como o repositório é público e usa runner GitHub-hosted padrão (`ubuntu-latest`), o monitor não consome a franquia mensal destinada a runners padrão de repositórios privados.
+O workflow mantém o cron GitHub a cada **15 minutos**, nos minutos `:07`, `:22`, `:37` e `:52`, como fallback. A V3 inclui em `cloudflare/` um Worker que pode disparar o mesmo workflow externamente nesses horários e verificar se o GitHub ficou sem executar.
+
+Como o repositório é público e usa runner GitHub-hosted padrão (`ubuntu-latest`), o monitor não consome a franquia mensal destinada a runners padrão de repositórios privados. O Worker foi projetado para caber no uso gratuito esperado deste monitor.
+
+Para ativar o relógio externo, siga `cloudflare/README.md`. Os segredos necessários ficam apenas no Cloudflare: um fine-grained GitHub token limitado ao repositório e o webhook já existente do Discord.
 
 ## Heartbeat
 
@@ -141,7 +159,7 @@ Como o repositório é público, revise cuidadosamente qualquer Pull Request ext
 4. Marque `Send a Discord test notification`.
 5. Execute.
 
-A V2 envia uma mensagem iniciada por `🧪 CODEX MONITOR V2 — TESTE`.
+A V3 envia uma mensagem iniciada por `🧪 CODEX MONITOR V3 — TESTE`.
 
 ## Estado persistente
 
@@ -153,7 +171,7 @@ A V2 envia uma mensagem iniciada por `🧪 CODEX MONITOR V2 — TESTE`.
 - fingerprints para deduplicação;
 - saúde das fontes.
 
-Na primeira execução normal após a migração V1 → V2, o monitor cria uma **baseline silenciosa** para não enviar novamente eventos históricos já existentes.
+Na primeira execução normal após a migração V1 → V3, o monitor cria uma **baseline silenciosa** para não enviar novamente eventos históricos já existentes.
 
 ## Limites atuais
 

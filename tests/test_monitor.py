@@ -107,20 +107,114 @@ def test_tracker_history_parser_accepts_current_ledger_shape():
     assert assessment.status == "confirmed"
 
 
-def test_health_alerts_only_after_eight_consecutive_failures():
+def test_health_alerts_after_three_consecutive_failures_and_recovers():
     state = {}
-    for i in range(7):
+    for i in range(2):
         should_alert, recovered = monitor.record_source_health(
             state, "source", False, f"error {i}"
         )
         assert should_alert is False
         assert recovered is False
 
-    should_alert, _ = monitor.record_source_health(state, "source", False, "error 8")
+    should_alert, _ = monitor.record_source_health(state, "source", False, "error 3")
     assert should_alert is True
 
-    should_alert_again, _ = monitor.record_source_health(state, "source", False, "error 9")
+    should_alert_again, _ = monitor.record_source_health(state, "source", False, "error 4")
     assert should_alert_again is False
 
     _, recovered = monitor.record_source_health(state, "source", True)
     assert recovered is True
+    assert state["health"]["source"]["consecutive_failures"] == 0
+    assert state["health"]["source"]["last_success"] is not None
+
+
+def test_success_refreshes_last_success_every_run(monkeypatch):
+    times = iter([
+        "2026-09-26T10:00:00+00:00",
+        "2026-09-26T10:15:00+00:00",
+    ])
+    monkeypatch.setattr(monitor, "iso_now", lambda: next(times))
+    state = {}
+
+    monitor.record_source_health(state, "source", True)
+    first = state["health"]["source"]["last_success"]
+    monitor.record_source_health(state, "source", True)
+    second = state["health"]["source"]["last_success"]
+
+    assert first == "2026-09-26T10:00:00+00:00"
+    assert second == "2026-09-26T10:15:00+00:00"
+
+
+def test_missed_sep26_curly_apostrophe_is_detected_as_future_reset():
+    assessment = monitor.assess_signal(
+        signal(
+            "o yes… we’re back in action and we’ll reset usage limits for all paid users "
+            "across Codex and ChatGPT Work sorry about the brief disruption!"
+        )
+    )
+    assert assessment.type == "automatic_reset"
+    assert assessment.status == "likely"
+    assert assessment.scope == "global_paid"
+    assert assessment.temporal == "future"
+
+
+def test_missed_sep26_straight_apostrophe_is_detected_as_future_reset():
+    assessment = monitor.assess_signal(
+        signal(
+            "We're back in action and we'll reset usage limits for all paid users "
+            "across Codex and ChatGPT Work."
+        )
+    )
+    assert assessment.type == "automatic_reset"
+    assert assessment.status == "likely"
+
+
+def test_help_center_example_does_not_create_banked_reset_alert():
+    s = signal(
+        "For example, if your weekly usage was due to reset on Friday and you use a "
+        "full banked reset, your next weekly reset will be around the following Tuesday.",
+        source_kind="help",
+    )
+    assessment = monitor.assess_signal(s)
+    assert assessment.type is None
+    assert assessment.status is None
+
+
+def test_real_banked_announcement_still_alerts():
+    assessment = monitor.assess_signal(
+        signal(
+            "We are loading a banked reset into all accounts of our Plus, Pro and Business users. "
+            "It will be available to redeem today."
+        )
+    )
+    assert assessment.type == "banked_reset"
+    assert assessment.status == "banked"
+
+
+def test_loose_codexreset_parser_survives_heading_markup_changes():
+    text = (
+        "Codex reset history 1. forced reset Some heading wrapper Global Codex quota reset "
+        "September 26, 2026 at 12:07 AM UTC "
+        "The author says we will reset usage limits for all paid users across Codex and ChatGPT Work. "
+        "Scope: all paid users"
+    )
+    signals = monitor.parse_tracker_history(text)
+    assert signals
+    assert signals[0].source_kind == "tracker"
+
+
+def test_secondary_tracker_parses_latest_announcement():
+    text = (
+        "Will Codex Reset? Codex reset announcements "
+        "Sep 26, 2026, 12:07 AM UTC "
+        "o yes… we’re back in action and we’ll reset usage limits for all paid users "
+        "across Codex and ChatGPT Work sorry about the brief disruption! "
+        "View announcement "
+        "Sep 22, 2026, 6:23 PM UTC banked another event"
+    )
+    signals = monitor.parse_willcodexresets(text)
+    assert len(signals) == 1
+    assessment = monitor.assess_signal(signals[0])
+    assert assessment.type == "automatic_reset"
+    assert assessment.status == "likely"
+    assert assessment.scope == "global_paid"

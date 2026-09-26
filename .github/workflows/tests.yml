@@ -27,5 +27,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Check Cloudflare scheduler syntax
+        run: node --check cloudflare/worker.js
+
       - name: Run tests
         run: pytest -q
