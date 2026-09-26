@@ -8,7 +8,7 @@ on:
       send_test:
         description: "Send a Discord test notification"
         required: true
-        default: true
+        default: false
         type: boolean
 
 permissions:
