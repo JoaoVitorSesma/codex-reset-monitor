@@ -25,6 +25,7 @@ HELP_URL = "https://help.openai.com/en/articles/20001498-how-banked-codex-resets
 COMMUNITY_BASE = "https://community.openai.com"
 CODEXRESET_URL = "https://codexreset.org/"
 CODEXRESET_HISTORY_URL = "https://codexreset.org/codex-reset-history"
+WILL_CODEX_RESETS_URL = "https://willcodexresets.com/"
 
 COMMUNITY_QUERIES = [
     "codex reset order:latest",
@@ -34,7 +35,7 @@ COMMUNITY_QUERIES = [
 ]
 
 HEADERS = {
-    "User-Agent": "codex-reset-monitor/2.0 (+https://github.com/JoaoVitorSesma/codex-reset-monitor)",
+    "User-Agent": "codex-reset-monitor/3.0 (+https://github.com/JoaoVitorSesma/codex-reset-monitor)",
     "Accept": "application/json,text/html;q=0.9,*/*;q=0.8",
 }
 
@@ -52,6 +53,7 @@ SOURCE_TRUST = {
     "community_official": 92,
     "community": 35,
     "tracker": 85,
+    "tracker_secondary": 82,
     "tracker_tibo": 95,
 }
 
@@ -84,6 +86,37 @@ FUTURE_PATTERNS = [
     r"\blittle surprise .* tomorrow\b",
 ]
 
+FUTURE_MARKER_PATTERNS = [
+    r"\bwill\b",
+    r"\bgoing to\b",
+    r"\bincoming\b",
+    r"\blater\b",
+    r"\btonight\b",
+    r"\btomorrow\b",
+    r"\bwithin\b",
+    r"\blands?\b",
+    r"\blanding\b",
+    r"\bsoon\b",
+    r"\babout to\b",
+]
+
+BANKED_EVENT_PATTERNS = [
+    r"\b(?:we will|we are|i will|they will)\b.{0,80}\bbanked reset\b",
+    r"\bloading (?:a |one )?banked reset\b",
+    r"\bbanked reset\b.{0,100}\b(?:available|redeem|redeemable|granted|land|lands|landing|today|tonight|tomorrow)\b",
+    r"\breset credit\b.{0,100}\b(?:available|redeem|granted|land|today|tonight|tomorrow)\b",
+    r"\bmanual reset credit\b.{0,80}\bgranted\b",
+]
+
+DOCUMENTATION_PATTERNS = [
+    r"\bfor example\b",
+    r"\bhow banked (?:codex )?resets work\b",
+    r"\bif your weekly usage\b",
+    r"\byour next weekly reset\b",
+    r"\btroubleshooting for missing resets\b",
+    r"\bexisting guidance\b",
+]
+
 GLOBAL_SCOPE_PATTERNS = [
     r"\bglobal\b",
     r"\bshared\b",
@@ -112,7 +145,8 @@ RESET_ACTION_PATTERNS = [
     r"\breplenish(?:ed|ing)?\b",
 ]
 
-HEALTH_FAILURE_THRESHOLD = 8
+HEALTH_FAILURE_THRESHOLD = 3
+HEALTH_STALE_MINUTES = 45
 MAX_EVENTS = 250
 MAX_SOURCE_FINGERPRINTS = 1000
 
@@ -158,6 +192,41 @@ def clean_text(raw: str) -> str:
     soup = BeautifulSoup(raw or "", "html.parser")
     text = html.unescape(soup.get_text(" ", strip=True))
     return re.sub(r"\s+", " ", text).strip()
+
+
+def normalize_language(text: str) -> str:
+    """Normalize punctuation and common contractions before classification."""
+    normalized = (text or "").translate(str.maketrans({
+        "’": "'",
+        "‘": "'",
+        "“": '"',
+        "”": '"',
+        "–": "-",
+        "—": "-",
+        "\u00a0": " ",
+    }))
+    replacements = {
+        r"\bwe'll\b": "we will",
+        r"\bi'll\b": "i will",
+        r"\bthey'll\b": "they will",
+        r"\byou'll\b": "you will",
+        r"\bwe're\b": "we are",
+        r"\bthey're\b": "they are",
+        r"\bwe've\b": "we have",
+        r"\bi've\b": "i have",
+        r"\bwon't\b": "will not",
+        r"\bcan't\b": "cannot",
+    }
+    normalized = normalized.lower()
+    for pattern, replacement in replacements.items():
+        normalized = re.sub(pattern, replacement, normalized, flags=re.I)
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
+def is_documentation_context(signal: Signal, text: str) -> bool:
+    if signal.source_kind != "help":
+        return False
+    return contains_any(text, DOCUMENTATION_PATTERNS)
 
 
 def contains_any(text: str, patterns: Iterable[str]) -> bool:
@@ -292,26 +361,56 @@ def extract_expected_at(text: str, created_at: str) -> str | None:
 
 
 def assess_signal(signal: Signal) -> Assessment:
-    text = f"{signal.title} {signal.text}".strip()
-    lower = text.lower()
+    text = normalize_language(f"{signal.title} {signal.text}".strip())
+    lower = text
     trust = source_trust(signal)
     scope = extract_scope(lower)
     banked = contains_any(lower, BANKED_PATTERNS)
     completed = contains_any(lower, COMPLETED_PATTERNS)
-    future = contains_any(lower, FUTURE_PATTERNS)
+    reset_action = contains_any(lower, RESET_ACTION_PATTERNS)
+    future = contains_any(lower, FUTURE_PATTERNS) or (
+        reset_action and contains_any(lower, FUTURE_MARKER_PATTERNS)
+    )
     global_scope = scope != "unknown"
     negative = contains_any(lower, NEGATIVE_PATTERNS)
-    reset_action = contains_any(lower, RESET_ACTION_PATTERNS)
+    documentation = is_documentation_context(signal, lower)
+    explicit_banked_event = banked and (
+        contains_any(lower, BANKED_EVENT_PATTERNS)
+        or signal.source_kind in {"tracker", "tracker_secondary"}
+    )
 
     temporal = "completed" if completed else "future" if future else "ambiguous"
-    certainty = "explicit" if (completed or future or banked) else "weak"
+    certainty = "explicit" if (completed or future or explicit_banked_event) else "weak"
     expected_at = extract_expected_at(text, signal.created_at)
 
     reasons = [f"source_trust={trust}"]
     confidence = trust
 
+    if documentation:
+        return Assessment(
+            type=None,
+            status=None,
+            scope=scope,
+            confidence=max(0, trust - 70),
+            temporal=temporal,
+            certainty="documentation",
+            expected_at=None,
+            reasons=reasons + ["documentation-context"],
+        )
+
     if banked:
         reasons.append("banked-language")
+        if not explicit_banked_event:
+            return Assessment(
+                type=None,
+                status=None,
+                scope=scope,
+                confidence=max(0, trust - 35),
+                temporal=temporal,
+                certainty="weak",
+                expected_at=expected_at,
+                reasons=reasons + ["banked-mention-without-event"],
+            )
         confidence += 5
         if trust >= 70:
             return Assessment(
@@ -322,7 +421,7 @@ def assess_signal(signal: Signal) -> Assessment:
                 temporal=temporal,
                 certainty="explicit",
                 expected_at=expected_at,
-                reasons=reasons,
+                reasons=reasons + ["explicit-banked-event"],
             )
 
     if global_scope:
@@ -335,7 +434,7 @@ def assess_signal(signal: Signal) -> Assessment:
 
     if future:
         confidence += 5
-        reasons.append("future-language")
+        reasons.append("future-intent")
 
     if expected_at:
         confidence += 4
@@ -398,7 +497,6 @@ def assess_signal(signal: Signal) -> Assessment:
         expected_at=expected_at,
         reasons=reasons,
     )
-
 
 def display_brt(value: str | None) -> str:
     dt = parse_dt(value)
@@ -621,31 +719,44 @@ def record_source_health(state: dict, source_name: str, ok: bool, error: str | N
         "consecutive_failures": 0,
         "last_success": None,
         "last_failure": None,
+        "first_failure_at": None,
         "last_error": None,
         "degraded_alert_sent": False,
     })
+    health.setdefault("first_failure_at", None)
 
     was_degraded = bool(health.get("degraded_alert_sent"))
+    now = iso_now()
+
     if ok:
-        had_failures = int(health.get("consecutive_failures", 0)) > 0
         health["consecutive_failures"] = 0
-        if health.get("last_success") is None or had_failures:
-            health["last_success"] = iso_now()
+        health["last_success"] = now
         health["last_error"] = None
+        health["first_failure_at"] = None
         health["degraded_alert_sent"] = False
         return False, was_degraded
 
     health["consecutive_failures"] = int(health.get("consecutive_failures", 0)) + 1
-    health["last_failure"] = iso_now()
+    health["last_failure"] = now
     health["last_error"] = error or "unknown error"
+    if not health.get("first_failure_at"):
+        health["first_failure_at"] = now
+
+    first_failure = parse_dt(health.get("first_failure_at"))
+    stale_minutes = (
+        (utc_now() - first_failure).total_seconds() / 60
+        if first_failure else 0
+    )
     should_alert = (
-        health["consecutive_failures"] >= HEALTH_FAILURE_THRESHOLD
+        (
+            health["consecutive_failures"] >= HEALTH_FAILURE_THRESHOLD
+            or stale_minutes >= HEALTH_STALE_MINUTES
+        )
         and not health.get("degraded_alert_sent")
     )
     if should_alert:
         health["degraded_alert_sent"] = True
     return should_alert, False
-
 
 def fetch_help() -> list[Signal]:
     response = requests.get(HELP_URL, headers=HEADERS, timeout=30)
@@ -744,6 +855,73 @@ def fetch_community() -> list[Signal]:
     return list(collected.values())
 
 
+def _tracker_signal(kind: str, title: str, created: datetime, body: str, raw: str) -> Signal:
+    status_word = "confirmed" if kind in {"forced reset", "compensation"} else "banked"
+    signal_text = f"{status_word} {kind}. {title}. {body}"
+    return Signal(
+        id=f"tracker-{sha(raw)[:20]}",
+        source_kind="tracker",
+        source_name="codexreset.org",
+        title=title,
+        text=signal_text,
+        raw=raw,
+        username="codexreset.org",
+        created_at=created.isoformat(),
+        url=CODEXRESET_HISTORY_URL,
+    )
+
+
+def parse_tracker_history_loose(text: str) -> list[Signal]:
+    """Fallback parser resilient to tracker heading/markup changes."""
+    normalized = re.sub(r"\s+", " ", text)
+    date_pattern = re.compile(
+        r"(?P<date>[A-Z][a-z]{2,8} \d{1,2}, \d{4} at \d{1,2}:\d{2} [AP]M UTC)",
+        flags=re.I,
+    )
+    signals: list[Signal] = []
+    seen_dates: set[str] = set()
+
+    for match in date_pattern.finditer(normalized):
+        created = parse_dt(match.group("date"))
+        if not created or created < utc_now() - timedelta(days=21):
+            continue
+
+        before = normalized[max(0, match.start() - 320):match.start()]
+        after = normalized[match.end():match.end() + 1500]
+        context = f"{before} {after}"
+        lower = context.lower()
+
+        if "reset" not in lower or "codex" not in lower:
+            continue
+
+        nearby_before = before[-260:].lower()
+        nearby_after = after[:600].lower()
+        if "banked reset" in nearby_before or "banked reset" in nearby_after:
+            kind = "banked reset"
+        elif "compensation" in nearby_before or "compensation" in nearby_after:
+            kind = "compensation"
+        else:
+            kind = "forced reset"
+
+        title_match = re.search(
+            r"(Global Codex[^.]{0,120}(?:reset|compensation)|[^.]{0,80}banked reset|[^.]{0,80}hard reset)",
+            before[-260:] + " " + after[:260],
+            flags=re.I,
+        )
+        title = clean_text(title_match.group(1)) if title_match else (
+            "Codex banked reset" if kind == "banked reset" else "Global Codex quota reset"
+        )
+        body = clean_text(after)[:1800]
+        date_key = created.isoformat()
+        if date_key in seen_dates:
+            continue
+        seen_dates.add(date_key)
+        raw = f"{kind} {title} {match.group('date')} {body}"
+        signals.append(_tracker_signal(kind, title, created, body, raw))
+
+    return signals[:12]
+
+
 def parse_tracker_history(text: str) -> list[Signal]:
     normalized = re.sub(r"\s+", " ", text)
     entry_pattern = re.compile(
@@ -757,26 +935,14 @@ def parse_tracker_history(text: str) -> list[Signal]:
     signals: list[Signal] = []
     for match in list(entry_pattern.finditer(normalized))[:12]:
         created = parse_dt(match.group("date"))
-        if not created or created < utc_now() - timedelta(days=14):
+        if not created or created < utc_now() - timedelta(days=21):
             continue
         kind = match.group("kind").lower()
         title = clean_text(match.group("title"))
         body = clean_text(match.group("body"))[:1800]
-        status_word = "confirmed" if kind in {"forced reset", "compensation"} else "banked"
-        signal_text = f"{status_word} {kind}. {title}. {body}"
-        signals.append(Signal(
-            id=f"tracker-{sha(match.group(0))[:20]}",
-            source_kind="tracker",
-            source_name="codexreset.org",
-            title=title,
-            text=signal_text,
-            raw=match.group(0),
-            username="codexreset.org",
-            created_at=created.isoformat(),
-            url=CODEXRESET_HISTORY_URL,
-        ))
-    return signals
+        signals.append(_tracker_signal(kind, title, created, body, match.group(0)))
 
+    return signals or parse_tracker_history_loose(text)
 
 def parse_tracker_tibo(text: str) -> list[Signal]:
     normalized = re.sub(r"\s+", " ", text)
@@ -823,10 +989,69 @@ def fetch_codexreset() -> list[Signal]:
     return signals
 
 
+def parse_willcodexresets(text: str) -> list[Signal]:
+    normalized = re.sub(r"\s+", " ", text)
+    marker = re.search(r"Codex reset announcements", normalized, flags=re.I)
+    section = normalized[marker.end():] if marker else normalized
+
+    date_pattern = re.compile(
+        r"(?P<date>[A-Z][a-z]{2,8} \d{1,2}, \d{4}, \d{1,2}:\d{2} [AP]M UTC)",
+        flags=re.I,
+    )
+    match = date_pattern.search(section)
+    if not match:
+        return []
+
+    created = parse_dt(match.group("date"))
+    if not created or created < utc_now() - timedelta(days=14):
+        return []
+
+    before = section[max(0, match.start() - 80):match.start()].lower()
+    after = section[match.end():]
+    next_match = date_pattern.search(after)
+    if next_match:
+        after = after[:next_match.start()]
+    body = re.split(
+        r"(?:View announcement|Historical intervals|Codex reset history)",
+        after,
+        maxsplit=1,
+        flags=re.I,
+    )[0]
+    body = clean_text(body)[:1800]
+    if "reset" not in body.lower():
+        return []
+
+    kind = "banked" if "banked" in before or "banked" in body.lower() else "regular"
+    prefix = "banked reset announcement" if kind == "banked" else "reset announcement"
+    signal_text = f"{prefix}. {body}"
+    return [Signal(
+        id=f"tracker-secondary-{sha(match.group(0) + body)[:20]}",
+        source_kind="tracker_secondary",
+        source_name="willcodexresets.com",
+        title=f"Latest Codex {kind} reset announcement",
+        text=signal_text,
+        raw=body,
+        username="willcodexresets.com",
+        created_at=created.isoformat(),
+        url=WILL_CODEX_RESETS_URL,
+    )]
+
+
+def fetch_willcodexresets() -> list[Signal]:
+    response = requests.get(WILL_CODEX_RESETS_URL, headers=HEADERS, timeout=30)
+    response.raise_for_status()
+    text = BeautifulSoup(response.text, "html.parser").get_text(" ", strip=True)
+    signals = parse_willcodexresets(text)
+    if not signals:
+        raise RuntimeError("secondary tracker responded but latest reset announcement was not parsed")
+    return signals
+
+
 SOURCE_FETCHERS = {
     "openai_help": fetch_help,
     "openai_community": fetch_community,
     "codexreset": fetch_codexreset,
+    "willcodexresets": fetch_willcodexresets,
 }
 
 
