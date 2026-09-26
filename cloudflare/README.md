@@ -36,3 +36,28 @@ For stronger watchdog deduplication, bind a KV namespace as `WATCHDOG_KV`. The W
 ## Manual health endpoint
 
 Opening the deployed Worker URL returns only non-secret health information about the latest GitHub workflow run. It never returns the GitHub token or Discord webhook.
+
+
+## Windows / PowerShell quick activation
+
+From a local clone of the repository:
+
+```powershell
+cd cloudflare
+npx wrangler login --use-keyring
+npx wrangler deploy
+npx wrangler secret put GITHUB_TOKEN
+npx wrangler secret put DISCORD_WEBHOOK_URL
+```
+
+For `GITHUB_TOKEN`, use a fine-grained GitHub personal access token restricted to `JoaoVitorSesma/codex-reset-monitor` with repository permission **Actions: Read and write**.
+
+For `DISCORD_WEBHOOK_URL`, paste the existing webhook URL directly into Wrangler's secret prompt. Do not commit either secret.
+
+After both secrets are stored, run:
+
+```powershell
+npx wrangler deploy
+```
+
+Then wait for the next `:07/:22/:37/:52` UTC trigger and confirm that GitHub Actions shows a `workflow_dispatch` run for **Codex Reset Monitor**. The original GitHub `schedule` remains enabled as fallback.

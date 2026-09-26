@@ -9,7 +9,7 @@ function githubHeaders(env) {
   return {
     "Accept": "application/vnd.github+json",
     "Authorization": `Bearer ${env.GITHUB_TOKEN}`,
-    "X-GitHub-Api-Version": "2022-11-28",
+    "X-GitHub-Api-Version": "2026-03-10",
     "User-Agent": "codex-reset-monitor-cloudflare-scheduler/1.0",
   };
 }
@@ -43,12 +43,12 @@ async function dispatchMonitor(env) {
     body: JSON.stringify({
       ref,
       inputs: {
-        send_test: "false",
+        send_test: false,
       },
     }),
   });
 
-  if (response.status !== 204) {
+  if (!response.ok) {
     throw new Error(`GitHub workflow dispatch failed: ${response.status} ${await response.text()}`);
   }
 }
