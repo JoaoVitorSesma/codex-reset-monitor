@@ -374,3 +374,22 @@ def test_load_state_prunes_known_false_positive_events(tmp_path, monkeypatch):
 
     assert "RESET-20260927-25183CE0" not in ids
     assert "RESET-20990101-VALID" in ids
+
+
+
+def test_discord_test_payload_reports_current_v3_architecture():
+    payload = monitor.discord_test_payload()
+    embed = payload["embeds"][0]
+    fields = {field["name"]: field["value"] for field in embed["fields"]}
+
+    assert embed["title"] == "🧪 CODEX MONITOR V3 — TESTE"
+    assert "V2" not in str(payload)
+    assert "Cloudflare Cron" in fields["Execução"]
+    assert "workflow_dispatch" in fields["Execução"]
+    assert "GitHub schedule" in fields["Execução"]
+    assert "OpenAI Help" in fields["Fontes"]
+    assert "OpenAI Developer Community" in fields["Fontes"]
+    assert "codexreset.org" in fields["Fontes"]
+    assert "willcodexresets.com" in fields["Fontes"]
+    assert "watchdog externo" in fields["Proteções"]
+    assert fields["Custo"] == "Sem X API e sem LLM/API paga."
