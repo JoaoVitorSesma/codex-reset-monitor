@@ -34,7 +34,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
           REPOSITORY: ${{ github.repository }}
-          API_URL: ${{ github.api_url }}
           FALLBACK_RECENT_SECONDS: "600"
         run: |
           set -euo pipefail
@@ -47,11 +46,15 @@ jobs:
             exit 0
           fi
 
-          latest="$(
+          if ! latest="$(
             gh api \
-              "$API_URL/repos/$REPOSITORY/actions/workflows/monitor.yml/runs?event=workflow_dispatch&per_page=1" \
-              --jq 'if (.workflow_runs | length) > 0 then .workflow_runs[0] | [.created_at, .status, (.conclusion // "")] | @tsv else "" end'
-          )"
+              "repos/$REPOSITORY/actions/workflows/monitor.yml/runs?event=workflow_dispatch&per_page=1" \
+              --jq 'if (.workflow_runs | length) > 0 then .workflow_runs[0] | "\(.created_at)|\(.status)|\(.conclusion // "")" else "" end'
+          )"; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "Could not inspect recent workflow_dispatch runs; failing open and running the GitHub fallback."
+            exit 0
+          fi
 
           if [[ -z "$latest" ]]; then
             echo "should_run=true" >> "$GITHUB_OUTPUT"
@@ -59,8 +62,13 @@ jobs:
             exit 0
           fi
 
-          IFS=$'\t' read -r created_at status conclusion <<< "$latest"
-          created_epoch="$(date -d "$created_at" +%s)"
+          IFS='|' read -r created_at status conclusion <<< "$latest"
+          if ! created_epoch="$(date -d "$created_at" +%s 2>/dev/null)"; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "Could not parse the latest dispatch timestamp; failing open and running the GitHub fallback."
+            exit 0
+          fi
+
           now_epoch="$(date -u +%s)"
           age_seconds="$(( now_epoch - created_epoch ))"
 

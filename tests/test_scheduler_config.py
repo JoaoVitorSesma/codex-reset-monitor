@@ -22,3 +22,10 @@ def test_schedule_uses_recent_dispatch_gate():
 def test_failed_recent_dispatch_does_not_suppress_fallback():
     assert 'if [[ "$status" != "completed" || "$conclusion" == "success" ]]' in WORKFLOW
     assert "Recent workflow_dispatch failed" in WORKFLOW
+
+
+
+def test_fallback_gate_fails_open_if_github_lookup_breaks():
+    assert "if ! latest=" in WORKFLOW
+    assert "failing open and running the GitHub fallback" in WORKFLOW
+    assert '"repos/$REPOSITORY/actions/workflows/monitor.yml/runs?event=workflow_dispatch&per_page=1"' in WORKFLOW
