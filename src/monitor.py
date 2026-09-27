@@ -18,6 +18,18 @@ from bs4 import BeautifulSoup
 from dateutil import parser as dateparser
 
 STATE_PATH = Path("state/alerts.json")
+
+# One-time V3 migration: these event IDs were created before the stricter
+# announcement gates and are known production false positives. Keeping them
+# could cause a future real event to merge into an already-notified bad event.
+INVALIDATED_EVENT_IDS = {
+    "BANKED-20260924-FBE5313D",
+    "BANKED-20260925-1075C70B",
+    "RESET-20260924-D029DD5B",
+    "RESET-20260923-3F5BF311",
+    "RESET-20260927-25183CE0",
+}
+
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
 TEST_DISCORD = os.environ.get("TEST_DISCORD", "false").lower() == "true"
 
@@ -332,6 +344,12 @@ def load_state() -> dict:
 
     for key, value in default.items():
         raw.setdefault(key, value)
+
+    raw["events"] = [
+        event
+        for event in raw.get("events", [])
+        if event.get("id") not in INVALIDATED_EVENT_IDS
+    ]
     return raw
 
 

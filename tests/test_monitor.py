@@ -1,3 +1,4 @@
+import json
 import sys
 from pathlib import Path
 
@@ -341,3 +342,35 @@ def test_official_support_direct_reset_announcement_still_alerts():
     assert assessment.type == "automatic_reset"
     assert assessment.status == "likely"
     assert assessment.scope == "global_paid"
+
+
+
+def test_load_state_prunes_known_false_positive_events(tmp_path, monkeypatch):
+    state_path = tmp_path / "alerts.json"
+    payload = {
+        "version": 2,
+        "initialized": True,
+        "seen_signal_fingerprints": [],
+        "source_fingerprints": {},
+        "health": {},
+        "events": [
+            {
+                "id": "RESET-20260927-25183CE0",
+                "type": "automatic_reset",
+                "status": "likely",
+            },
+            {
+                "id": "RESET-20990101-VALID",
+                "type": "automatic_reset",
+                "status": "confirmed",
+            },
+        ],
+    }
+    state_path.write_text(json.dumps(payload), encoding="utf-8")
+    monkeypatch.setattr(monitor, "STATE_PATH", state_path)
+
+    loaded = monitor.load_state()
+    ids = {event["id"] for event in loaded["events"]}
+
+    assert "RESET-20260927-25183CE0" not in ids
+    assert "RESET-20990101-VALID" in ids
