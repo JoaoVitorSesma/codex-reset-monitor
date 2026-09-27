@@ -34,7 +34,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
           REPOSITORY: ${{ github.repository }}
-          API_URL: ${{ github.api_url }}
           FALLBACK_RECENT_SECONDS: "600"
         run: |
           set -euo pipefail
@@ -47,11 +46,15 @@ jobs:
             exit 0
           fi
 
-          latest="$(
+          if ! latest="$(
             gh api \
-              "$API_URL/repos/$REPOSITORY/actions/workflows/monitor.yml/runs?event=workflow_dispatch&per_page=1" \
+              "repos/$REPOSITORY/actions/workflows/monitor.yml/runs?event=workflow_dispatch&per_page=1" \
               --jq 'if (.workflow_runs | length) > 0 then .workflow_runs[0] | [.created_at, .status, (.conclusion // "")] | @tsv else "" end'
-          )"
+          )"; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "Could not inspect recent workflow_dispatch runs; failing open and running the GitHub fallback."
+            exit 0
+          fi
 
           if [[ -z "$latest" ]]; then
             echo "should_run=true" >> "$GITHUB_OUTPUT"
@@ -59,8 +62,65 @@ jobs:
             exit 0
           fi
 
-          IFS=$'\t' read -r created_at status conclusion <<< "$latest"
-          created_epoch="$(date -d "$created_at" +%s)"
+          IFS=
+          if (( age_seconds >= 0 && age_seconds <= FALLBACK_RECENT_SECONDS )); then
+            if [[ "$status" != "completed" || "$conclusion" == "success" ]]; then
+              echo "should_run=false" >> "$GITHUB_OUTPUT"
+              echo "Recent healthy workflow_dispatch found (${age_seconds}s old, status=$status, conclusion=${conclusion:-n/a}); skipping duplicate fallback."
+              exit 0
+            fi
+
+            echo "Recent workflow_dispatch failed (${age_seconds}s old, conclusion=${conclusion:-n/a}); running fallback."
+          else
+            echo "Latest workflow_dispatch is ${age_seconds}s old; outside fallback window."
+          fi
+
+          echo "should_run=true" >> "$GITHUB_OUTPUT"
+
+  monitor:
+    needs: gate
+    if: needs.gate.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run monitor
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          TEST_DISCORD: ${{ github.event_name == 'workflow_dispatch' && inputs.send_test && 'true' || 'false' }}
+        run: python src/run_monitor.py
+
+      - name: Persist monitor state
+        if: github.event_name != 'workflow_dispatch' || inputs.send_test == false
+        run: |
+          if git diff --quiet -- state/alerts.json; then
+            echo "No state changes to persist."
+            exit 0
+          fi
+
+          git config user.name "codex-reset-monitor[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/alerts.json
+          git commit -m "chore: update monitor state"
+          git push
+\t' read -r created_at status conclusion <<< "$latest"
+          if ! created_epoch="$(date -d "$created_at" +%s 2>/dev/null)"; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "Could not parse the latest dispatch timestamp; failing open and running the GitHub fallback."
+            exit 0
+          fi
           now_epoch="$(date -u +%s)"
           age_seconds="$(( now_epoch - created_epoch ))"
 
