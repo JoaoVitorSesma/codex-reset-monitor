@@ -15,7 +15,9 @@ Monitor público e gratuito para detectar anúncios relevantes de reset de uso d
 Cloudflare Cron (:07, :22, :37, :52) ──→ workflow_dispatch
                     │
                     ▼
-GitHub Actions ← GitHub schedule (fallback)
+GitHub Actions ← GitHub fallback probe (:12, :27, :42, :57)
+                    │
+                    └─ skips itself when a recent healthy dispatch exists
         ↓
 ┌───────────────────────────────┐
 │ OpenAI Help Center            │
@@ -40,7 +42,7 @@ Discord Webhook → #codex-alerts
 
 A V3 não usa X API paga e não usa LLM/API externa. O objetivo é manter o sistema sob nosso controle e com custo recorrente esperado de **R$ 0**.
 
-A camada Cloudflare é um relógio externo opcional e independente do scheduler do GitHub. O código já está em `cloudflare/`, mas precisa ser implantado uma única vez na conta Cloudflare do proprietário para se tornar o gatilho principal. Até essa implantação, o cron nativo do GitHub continua operando normalmente.
+A camada Cloudflare é o relógio externo principal e independente do scheduler do GitHub. O Worker em `cloudflare/` dispara o workflow nos minutos `:07`, `:22`, `:37` e `:52`. O cron nativo do GitHub fica deslocado cinco minutos, em `:12`, `:27`, `:42` e `:57`, e atua apenas como fallback: antes de executar o monitor, verifica se houve um `workflow_dispatch` saudável nos últimos 10 minutos. Se houve, encerra sem repetir a varredura; se não houve, ou se o dispatch recente falhou, executa o monitor normalmente.
 
 ## Fontes e confiança
 
@@ -131,7 +133,7 @@ Os testes atuais cobrem:
 
 ## Frequência, scheduler externo e custo
 
-O workflow mantém o cron GitHub a cada **15 minutos**, nos minutos `:07`, `:22`, `:37` e `:52`, como fallback. A V3 inclui em `cloudflare/` um Worker que pode disparar o mesmo workflow externamente nesses horários e verificar se o GitHub ficou sem executar.
+O Cloudflare mantém o gatilho principal a cada **15 minutos**, nos minutos `:07`, `:22`, `:37` e `:52`. O fallback do GitHub roda cinco minutos depois, em `:12`, `:27`, `:42` e `:57`, mas só executa a varredura quando não existe um `workflow_dispatch` saudável nos últimos **10 minutos**. Isso evita duas coletas praticamente idênticas quando o Cloudflare está funcionando e preserva a redundância quando o gatilho externo falha.
 
 Como o repositório é público e usa runner GitHub-hosted padrão (`ubuntu-latest`), o monitor não consome a franquia mensal destinada a runners padrão de repositórios privados. O Worker foi projetado para caber no uso gratuito esperado deste monitor.
 
