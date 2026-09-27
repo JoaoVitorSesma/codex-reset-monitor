@@ -100,30 +100,74 @@ FUTURE_MARKER_PATTERNS = [
     r"\babout to\b",
 ]
 
+AUTOMATIC_EVENT_PATTERNS = [
+    r"\bwe will reset\b",
+    r"\bwe are resetting\b",
+    r"\bwe have reset\b",
+    r"\busage limits? (?:have|has) been reset\b",
+    r"\breset (?:has been )?propagated\b",
+    r"\breset incoming\b",
+    r"\bbrand new usage (?:for|to)\b",
+    r"\breset(?:ting)? usage (?:now|for all|for everyone)\b",
+    r"\ball reset for everyone\b",
+    r"\breset button (?:was )?pressed\b",
+    r"\bglobal (?:codex )?(?:quota )?reset\b",
+    r"\bhard reset\b",
+]
+
 BANKED_EVENT_PATTERNS = [
-    r"\b(?:we will|we are|i will|they will)\b.{0,80}\bbanked reset\b",
+    r"\b(?:we will|we are|we have|i will|they will)\s+(?:give|grant|load|issue|add|provide)\b.{0,100}\bbanked reset\b",
     r"\bloading (?:a |one )?banked reset\b",
-    r"\bbanked reset\b.{0,100}\b(?:available|redeem|redeemable|granted|land|lands|landing|today|tonight|tomorrow)\b",
-    r"\breset credit\b.{0,100}\b(?:available|redeem|granted|land|today|tonight|tomorrow)\b",
+    r"\b(?:banked reset|reset credit)\b.{0,40}\b(?:has been|is being|will be)\s+(?:granted|issued|loaded|added)\b",
+    r"\b(?:granted|issued|loaded|added)\b.{0,80}\b(?:banked reset|reset credit)\b",
     r"\bmanual reset credit\b.{0,80}\bgranted\b",
 ]
 
-DOCUMENTATION_PATTERNS = [
+NON_ANNOUNCEMENT_PATTERNS = [
+    # Documentation / support guidance.
     r"\bfor example\b",
     r"\bhow banked (?:codex )?resets work\b",
     r"\bif your weekly usage\b",
     r"\byour next weekly reset\b",
     r"\btroubleshooting for missing resets\b",
     r"\bexisting guidance\b",
+    r"\bhelp center article\b",
+    r"\bthanks for following up\b",
+    r"\bplease (?:contact|reach out to) support\b",
+    r"\breach out to openai support\b",
+    r"\bif (?:the )?issue still persists\b",
+    r"\bcorrect account/workspace\b",
+    r"\brefresh the usage page\b",
+    r"\bintended to be account-level\b",
+    r"\beligible users should be able to\b",
+
+    # Bug reports / diagnostic discussions about ordinary reset windows.
+    r"\bbug report\b",
+    r"\bwhat issue are you seeing\b",
+    r"\bincorrect .*reset time\b",
+    r"\bdifferent reset times\b",
+    r"\blocal os time\b",
+    r"\busage graph\b",
+    r"\banalytics page\b",
+    r"\b5-hour (?:codex / work )?usage limit\b",
+
+    # Complaints and post-mortems are not announcements.
+    r"\bdecreased codex usage limits\b",
+    r"\bfailure report\b",
+    r"\btoken abuse\b",
+    r"\bwasted .*tokens\b",
 ]
 
 GLOBAL_SCOPE_PATTERNS = [
     r"\bglobal\b",
     r"\bshared\b",
     r"\ball paid\b",
+    r"\ball accounts\b",
+    r"\ball users\b",
     r"\ball .*codex.*users\b",
     r"\beveryone\b",
-    r"\bacross codex\b",
+    r"\bacross codex(?: and chatgpt work)?\b",
+    r"\bplus,?\s+pro\s+and\s+business users\b",
 ]
 
 NEGATIVE_PATTERNS = [
@@ -223,10 +267,18 @@ def normalize_language(text: str) -> str:
     return re.sub(r"\s+", " ", normalized).strip()
 
 
-def is_documentation_context(signal: Signal, text: str) -> bool:
-    if signal.source_kind != "help":
+def is_non_announcement_context(signal: Signal, text: str) -> bool:
+    if signal.source_kind in {"tracker", "tracker_secondary", "tracker_tibo"}:
         return False
-    return contains_any(text, DOCUMENTATION_PATTERNS)
+    return contains_any(text, NON_ANNOUNCEMENT_PATTERNS)
+
+
+def strong_automatic_event_assertion(text: str) -> bool:
+    return contains_any(text, AUTOMATIC_EVENT_PATTERNS)
+
+
+def strong_banked_event_assertion(text: str) -> bool:
+    return contains_any(text, BANKED_EVENT_PATTERNS)
 
 
 def contains_any(text: str, patterns: Iterable[str]) -> bool:
@@ -295,16 +347,27 @@ def save_state(state: dict) -> None:
 
 
 def trusted_community_context(signal: Signal) -> bool:
-    lower = f"{signal.username} {signal.text} {signal.raw}".lower()
-    if signal.username in TRUSTED_USERNAMES:
+    username = (signal.username or "").lower()
+    trusted_usernames = {name.lower() for name in TRUSTED_USERNAMES}
+    if username in trusted_usernames:
         return True
-    if "openai support" in lower:
-        return True
-    if "x.com/thsottiaux" in lower or "twitter.com/thsottiaux" in lower:
-        return True
-    if "@thsottiaux" in lower or re.search(r"\btibo\b", lower):
-        return True
-    return False
+
+    lower = normalize_language(f"{signal.text} {signal.raw}")
+    tibo_attribution = (
+        "x.com/thsottiaux" in lower
+        or "twitter.com/thsottiaux" in lower
+        or "@thsottiaux" in lower
+        or re.search(r"\btibo\s+@thsottiaux\b", lower)
+    )
+    if not tibo_attribution:
+        return False
+
+    # A random Community post mentioning Tibo must not inherit official trust.
+    # Only a repost that actually contains reset-announcement language does.
+    return (
+        strong_automatic_event_assertion(lower)
+        or strong_banked_event_assertion(lower)
+    )
 
 
 def source_trust(signal: Signal) -> int:
@@ -316,11 +379,11 @@ def source_trust(signal: Signal) -> int:
 def extract_scope(text: str) -> str:
     lower = text.lower()
     if contains_any(lower, GLOBAL_SCOPE_PATTERNS):
-        if "paid" in lower:
-            return "global_paid"
-        return "global"
-    if "codex" in lower and ("chatgpt work" in lower or "work" in lower):
-        return "shared_codex_work"
+        paid_scope = (
+            "paid" in lower
+            or ("plus" in lower and "pro" in lower and "business" in lower)
+        )
+        return "global_paid" if paid_scope else "global"
     return "unknown"
 
 
@@ -365,37 +428,46 @@ def assess_signal(signal: Signal) -> Assessment:
     lower = text
     trust = source_trust(signal)
     scope = extract_scope(lower)
+
     banked = contains_any(lower, BANKED_PATTERNS)
     completed = contains_any(lower, COMPLETED_PATTERNS)
     reset_action = contains_any(lower, RESET_ACTION_PATTERNS)
     future = contains_any(lower, FUTURE_PATTERNS) or (
         reset_action and contains_any(lower, FUTURE_MARKER_PATTERNS)
     )
+
+    automatic_assertion = strong_automatic_event_assertion(lower)
+    banked_assertion = strong_banked_event_assertion(lower)
+    tracker_event = signal.source_kind in {"tracker", "tracker_secondary"}
+    non_announcement = is_non_announcement_context(signal, lower)
     global_scope = scope != "unknown"
     negative = contains_any(lower, NEGATIVE_PATTERNS)
-    documentation = is_documentation_context(signal, lower)
-    explicit_banked_event = banked and (
-        contains_any(lower, BANKED_EVENT_PATTERNS)
-        or signal.source_kind in {"tracker", "tracker_secondary"}
-    )
+
+    explicit_banked_event = banked and (banked_assertion or tracker_event)
+    explicit_automatic_event = automatic_assertion or tracker_event
 
     temporal = "completed" if completed else "future" if future else "ambiguous"
-    certainty = "explicit" if (completed or future or explicit_banked_event) else "weak"
+    certainty = "explicit" if (
+        explicit_automatic_event or explicit_banked_event
+    ) else "weak"
     expected_at = extract_expected_at(text, signal.created_at)
 
     reasons = [f"source_trust={trust}"]
     confidence = trust
 
-    if documentation:
+    # Guidance, bug reports and complaints can contain words such as reset,
+    # available, will, all, or Work. They are not announcements unless the same
+    # signal also contains a strong, direct reset assertion.
+    if non_announcement and not (automatic_assertion or banked_assertion):
         return Assessment(
             type=None,
             status=None,
             scope=scope,
-            confidence=max(0, trust - 70),
+            confidence=max(0, trust - 55),
             temporal=temporal,
-            certainty="documentation",
+            certainty="non-announcement",
             expected_at=None,
-            reasons=reasons + ["documentation-context"],
+            reasons=reasons + ["non-announcement-context"],
         )
 
     if banked:
@@ -411,6 +483,7 @@ def assess_signal(signal: Signal) -> Assessment:
                 expected_at=expected_at,
                 reasons=reasons + ["banked-mention-without-event"],
             )
+
         confidence += 5
         if trust >= 70:
             return Assessment(
@@ -423,6 +496,21 @@ def assess_signal(signal: Signal) -> Assessment:
                 expected_at=expected_at,
                 reasons=reasons + ["explicit-banked-event"],
             )
+
+    # For Help/Community text, merely mentioning "reset" plus a future word is
+    # insufficient. The source must make a direct reset assertion. Tracker
+    # adapters already emit event-shaped signals and are allowed through.
+    if not explicit_automatic_event:
+        return Assessment(
+            type=None,
+            status=None,
+            scope=scope,
+            confidence=max(0, trust - 30),
+            temporal=temporal,
+            certainty="weak",
+            expected_at=expected_at,
+            reasons=reasons + ["no-direct-reset-assertion"],
+        )
 
     if global_scope:
         confidence += 8
@@ -460,7 +548,7 @@ def assess_signal(signal: Signal) -> Assessment:
             temporal="completed",
             certainty="explicit",
             expected_at=expected_at,
-            reasons=reasons,
+            reasons=reasons + ["direct-reset-assertion"],
         )
 
     if tracker_confirmed and global_scope and confidence >= 85:
@@ -484,7 +572,7 @@ def assess_signal(signal: Signal) -> Assessment:
             temporal="future",
             certainty="explicit",
             expected_at=expected_at,
-            reasons=reasons,
+            reasons=reasons + ["direct-reset-assertion"],
         )
 
     return Assessment(
