@@ -2,7 +2,7 @@ name: Codex Reset Monitor
 
 on:
   schedule:
-    - cron: "7,22,37,52 * * * *"
+    - cron: "12,27,42,57 * * * *"
   workflow_dispatch:
     inputs:
       send_test:
@@ -12,6 +12,7 @@ on:
         type: boolean
 
 permissions:
+  actions: read
   contents: write
 
 concurrency:
@@ -19,7 +20,67 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      should_run: ${{ steps.fallback.outputs.should_run }}
+
+    steps:
+      - name: Decide whether fallback should run
+        id: fallback
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          REPOSITORY: ${{ github.repository }}
+          API_URL: ${{ github.api_url }}
+          FALLBACK_RECENT_SECONDS: "600"
+        run: |
+          set -euo pipefail
+
+          # workflow_dispatch is the primary Cloudflare path (and also supports
+          # deliberate manual runs). It should always execute the monitor.
+          if [[ "$EVENT_NAME" != "schedule" ]]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "Primary/manual dispatch detected; monitor will run."
+            exit 0
+          fi
+
+          latest="$(
+            gh api \
+              "$API_URL/repos/$REPOSITORY/actions/workflows/monitor.yml/runs?event=workflow_dispatch&per_page=1" \
+              --jq 'if (.workflow_runs | length) > 0 then .workflow_runs[0] | [.created_at, .status, (.conclusion // "")] | @tsv else "" end'
+          )"
+
+          if [[ -z "$latest" ]]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "No external dispatch found; GitHub schedule will run as fallback."
+            exit 0
+          fi
+
+          IFS=$'\t' read -r created_at status conclusion <<< "$latest"
+          created_epoch="$(date -d "$created_at" +%s)"
+          now_epoch="$(date -u +%s)"
+          age_seconds="$(( now_epoch - created_epoch ))"
+
+          if (( age_seconds >= 0 && age_seconds <= FALLBACK_RECENT_SECONDS )); then
+            if [[ "$status" != "completed" || "$conclusion" == "success" ]]; then
+              echo "should_run=false" >> "$GITHUB_OUTPUT"
+              echo "Recent healthy workflow_dispatch found (${age_seconds}s old, status=$status, conclusion=${conclusion:-n/a}); skipping duplicate fallback."
+              exit 0
+            fi
+
+            echo "Recent workflow_dispatch failed (${age_seconds}s old, conclusion=${conclusion:-n/a}); running fallback."
+          else
+            echo "Latest workflow_dispatch is ${age_seconds}s old; outside fallback window."
+          fi
+
+          echo "should_run=true" >> "$GITHUB_OUTPUT"
+
   monitor:
+    needs: gate
+    if: needs.gate.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
 

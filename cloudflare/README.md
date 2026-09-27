@@ -6,7 +6,7 @@ This folder contains the optional V3 external clock. The monitor itself still ru
 2. sends a Discord watchdog alert if the latest run is stale;
 3. triggers `monitor.yml` through `workflow_dispatch`.
 
-The GitHub `schedule` remains enabled as a fallback.
+The GitHub `schedule` remains enabled as a fallback, but is staggered five minutes after the Cloudflare trigger and skips the monitor when it sees a recent healthy `workflow_dispatch`.
 
 ## Required secrets
 
@@ -25,7 +25,7 @@ npx wrangler secret put DISCORD_WEBHOOK_URL
 npx wrangler deploy
 ```
 
-The cron in `wrangler.toml` runs at `:07, :22, :37, :52` every hour.
+The cron in `wrangler.toml` runs at `:07, :22, :37, :52` every hour. The GitHub fallback probe runs at `:12, :27, :42, :57`; when it finds a healthy external dispatch from the previous 10 minutes, it exits without running the monitor a second time.
 
 ## Optional KV deduplication
 
@@ -60,4 +60,4 @@ After both secrets are stored, run:
 npx wrangler deploy
 ```
 
-Then wait for the next `:07/:22/:37/:52` UTC trigger and confirm that GitHub Actions shows a `workflow_dispatch` run for **Codex Reset Monitor**. The original GitHub `schedule` remains enabled as fallback.
+Then wait for the next `:07/:22/:37/:52` UTC trigger and confirm that GitHub Actions shows a `workflow_dispatch` run for **Codex Reset Monitor**. The GitHub fallback probe runs five minutes later at `:12/:27/:42/:57`; when the Cloudflare-triggered run is healthy, the fallback workflow should stop at the gate instead of repeating the monitor.
