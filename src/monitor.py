@@ -117,6 +117,7 @@ AUTOMATIC_EVENT_PATTERNS = [
 
 BANKED_EVENT_PATTERNS = [
     r"\b(?:we will|we are|we have|i will|they will)\s+(?:give|grant|load|issue|add|provide)\b.{0,100}\bbanked reset\b",
+    r"\b(?:all paid|all users|everyone)\b.{0,80}\bwill (?:have|receive|get)\b.{0,80}\bbanked reset\b",
     r"\bloading (?:a |one )?banked reset\b",
     r"\b(?:banked reset|reset credit)\b.{0,40}\b(?:has been|is being|will be)\s+(?:granted|issued|loaded|added)\b",
     r"\b(?:granted|issued|loaded|added)\b.{0,80}\b(?:banked reset|reset credit)\b",
