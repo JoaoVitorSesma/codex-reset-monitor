@@ -794,6 +794,55 @@ def discord_event_payload(event: dict, signal: Signal, assessment: Assessment, u
     }
 
 
+def discord_test_payload() -> dict:
+    return {
+        "username": "Codex Reset Monitor",
+        "embeds": [{
+            "title": "🧪 CODEX MONITOR V3 — TESTE",
+            "description": (
+                "Webhook, GitHub Actions, scheduler externo e formato dos embeds V3 "
+                "estão funcionando."
+            ),
+            "color": 0x3498DB,
+            "fields": [
+                {
+                    "name": "Execução",
+                    "value": (
+                        "Cloudflare Cron → workflow_dispatch → GitHub Actions\n"
+                        "GitHub schedule permanece como fallback."
+                    ),
+                    "inline": False,
+                },
+                {
+                    "name": "Fontes",
+                    "value": (
+                        "OpenAI Help + OpenAI Developer Community + codexreset.org "
+                        "+ willcodexresets.com"
+                    ),
+                    "inline": False,
+                },
+                {
+                    "name": "Proteções",
+                    "value": (
+                        "Event engine + deduplicação + horários BRT + health monitoring "
+                        "+ watchdog externo."
+                    ),
+                    "inline": False,
+                },
+                {
+                    "name": "Custo",
+                    "value": "Sem X API e sem LLM/API paga.",
+                    "inline": False,
+                },
+            ],
+            "footer": {
+                "text": "V3 • classificação determinística • infraestrutura redundante"
+            },
+            "timestamp": iso_now(),
+        }],
+    }
+
+
 def discord_health_payload(source_name: str, health: dict, recovered: bool = False) -> dict:
     if recovered:
         heading = "✅ CODEX MONITOR — FONTE RECUPERADA"
@@ -1181,20 +1230,8 @@ def main() -> int:
     state = load_state()
 
     if TEST_DISCORD:
-        send_discord({
-            "username": "Codex Reset Monitor",
-            "embeds": [{
-                "title": "🧪 CODEX MONITOR V2 — TESTE",
-                "description": "Webhook, GitHub Actions e formato de embeds V2 estão funcionando.",
-                "color": 0x3498DB,
-                "fields": [
-                    {"name": "Arquitetura", "value": "OpenAI Help + Community + codexreset.org + event engine + health monitoring", "inline": False},
-                    {"name": "Custo", "value": "Sem X API e sem LLM/API paga.", "inline": False},
-                ],
-                "timestamp": iso_now(),
-            }],
-        })
-        print("Discord V2 test sent successfully")
+        send_discord(discord_test_payload())
+        print("Discord V3 test sent successfully")
         return 0
 
     all_signals: list[Signal] = []
