@@ -6,15 +6,27 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import monitor
 
 
-def signal(text, source_kind="tracker_tibo", created_at="2026-09-08T16:00:00Z", signal_id="s1"):
+def signal(
+    text,
+    source_kind="tracker_tibo",
+    created_at="2026-09-08T16:00:00Z",
+    signal_id="s1",
+    username=None,
+    title="Codex reset signal",
+    raw=None,
+):
     return monitor.Signal(
         id=signal_id,
         source_kind=source_kind,
         source_name="test",
-        title="Codex reset signal",
+        title=title,
         text=text,
-        raw=text,
-        username="thsottiaux" if source_kind == "tracker_tibo" else "user",
+        raw=text if raw is None else raw,
+        username=(
+            username
+            if username is not None
+            else ("thsottiaux" if source_kind == "tracker_tibo" else "user")
+        ),
         created_at=created_at,
         url="https://example.com/source",
     )
@@ -215,6 +227,117 @@ def test_secondary_tracker_parses_latest_announcement():
     signals = monitor.parse_willcodexresets(text)
     assert len(signals) == 1
     assessment = monitor.assess_signal(signals[0])
+    assert assessment.type == "automatic_reset"
+    assert assessment.status == "likely"
+    assert assessment.scope == "global_paid"
+
+
+
+def test_support_guidance_about_banked_reset_is_ignored():
+    assessment = monitor.assess_signal(
+        signal(
+            "Hey, thanks for following up. You can also review our Help Center article "
+            "on how banked Codex resets work, including eligibility and troubleshooting "
+            "for missing resets. If you're still not able to see the banked reset, "
+            "please contact Support.",
+            source_kind="community",
+            username="OpenAI_Support",
+            title="Banked Codex reset guidance",
+        )
+    )
+    assert assessment.type is None
+    assert assessment.status is None
+    assert assessment.certainty in {"non-announcement", "weak"}
+
+
+def test_support_explanation_of_available_banked_reset_is_ignored():
+    assessment = monitor.assess_signal(
+        signal(
+            "Banked Codex resets are intended to be account-level rather than desktop-app-only. "
+            "Eligible users should be able to view and redeem an available reset from Settings → Usage. "
+            "If the issue still persists today, confirm you're using the correct account/workspace "
+            "and refresh the Usage page.",
+            source_kind="community",
+            username="OpenAI_Support",
+            title="How to redeem a banked reset",
+        )
+    )
+    assert assessment.type is None
+    assert assessment.status is None
+
+
+def test_bug_report_about_reset_time_is_ignored():
+    assessment = monitor.assess_signal(
+        signal(
+            "I filed the same issue as a GitHub bug report. Codex / Work analytics shows "
+            "incorrect 5-hour reset time based on local OS time. The same 5-hour Codex / Work "
+            "usage limit shows different reset times depending on which screen is viewed. "
+            "What issue are you seeing?",
+            source_kind="community",
+            username="reqstudio24",
+            title="Codex Work analytics reset time bug",
+        )
+    )
+    assert assessment.type is None
+    assert assessment.status is None
+    assert assessment.scope == "unknown"
+
+
+def test_usage_limit_complaint_is_ignored_even_if_it_mentions_tibo_elsewhere():
+    raw = (
+        "There are problems with the decreased Codex usage limits. Here is a failure report "
+        "describing CODEX TOKEN ABUSE. Codex wasted an entire week's worth of Plus tokens. "
+        "For context someone linked x.com/thsottiaux elsewhere in the thread."
+    )
+    assessment = monitor.assess_signal(
+        signal(
+            raw,
+            source_kind="community",
+            username="pnom",
+            title="Usage limits complaint",
+            raw=raw,
+        )
+    )
+    assert monitor.source_trust(
+        signal(
+            raw,
+            source_kind="community",
+            username="pnom",
+            title="Usage limits complaint",
+            raw=raw,
+        )
+    ) == monitor.SOURCE_TRUST["community"]
+    assert assessment.type is None
+    assert assessment.status is None
+
+
+def test_tibo_repost_with_direct_reset_language_still_gets_trusted_and_alerts():
+    text = (
+        "x.com/thsottiaux Tibo @thsottiaux: we're back in action and we'll reset "
+        "usage limits for all paid users across Codex and ChatGPT Work."
+    )
+    s = signal(
+        text,
+        source_kind="community",
+        username="VeitB",
+        title="Tibo reset announcement repost",
+        raw=text,
+    )
+    assert monitor.source_trust(s) == monitor.SOURCE_TRUST["community_official"]
+    assessment = monitor.assess_signal(s)
+    assert assessment.type == "automatic_reset"
+    assert assessment.status == "likely"
+    assert assessment.scope == "global_paid"
+
+
+def test_official_support_direct_reset_announcement_still_alerts():
+    s = signal(
+        "We will reset usage limits for all paid users across Codex and ChatGPT Work tonight.",
+        source_kind="community",
+        username="OpenAI_Support",
+        title="Codex reset announcement",
+    )
+    assessment = monitor.assess_signal(s)
     assert assessment.type == "automatic_reset"
     assert assessment.status == "likely"
     assert assessment.scope == "global_paid"
