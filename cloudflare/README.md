@@ -167,3 +167,13 @@ npx wrangler secret delete FAILOVER_TEST_MODE
 ```
 
 The next Cloudflare cron tick will resume normal `workflow_dispatch` operation. The flag does not change monitor state, does not send a fake Discord incident, and does not modify the configured Cron Trigger.
+
+## Failed workflow watchdog
+
+The Cloudflare watchdog also checks the conclusion of the latest completed GitHub Actions run. If a recent run exists but ends with a non-success conclusion (for example `failure`, `cancelled`, or `timed_out`), Cloudflare sends a direct Discord alert titled:
+
+`🔴 CODEX MONITOR — WORKFLOW FALHOU`
+
+The alert identifies the run and conclusion, then Cloudflare still attempts the next normal `workflow_dispatch`. This is separate from the stale-run alert: a failed run is reported as a workflow failure rather than as an execution delay.
+
+If `WATCHDOG_KV` is configured, the same failed run is alerted only once. Without KV, repeated alerts remain possible while the failed run stays the latest observed run.
