@@ -127,3 +127,43 @@ The Worker also has automated tests for:
 - stale GitHub run → watchdog alert + dispatch attempt;
 - GitHub status lookup failure → direct Discord alert + dispatch attempt;
 - workflow dispatch failure → direct Discord watchdog alert.
+
+## Controlled GitHub fallback test
+
+If disabling Cron Triggers is inconvenient or does not propagate immediately, the Worker can intentionally skip its GitHub dispatch while keeping the Cloudflare cron itself active.
+
+Set a temporary Cloudflare secret:
+
+```powershell
+npx wrangler secret put FAILOVER_TEST_MODE
+```
+
+When prompted, enter exactly:
+
+```text
+skip_dispatch
+```
+
+Deploy:
+
+```powershell
+npx wrangler deploy
+```
+
+During the next Cloudflare cron tick, the Worker will still run but will not call GitHub `workflow_dispatch`. The GitHub native schedule, five minutes later, should therefore pass the fallback gate and execute the monitor.
+
+Expected GitHub result:
+
+```text
+event = schedule
+gate      success
+monitor   success
+```
+
+As soon as that fallback run is observed, remove the temporary flag:
+
+```powershell
+npx wrangler secret delete FAILOVER_TEST_MODE
+```
+
+The next Cloudflare cron tick will resume normal `workflow_dispatch` operation. The flag does not change monitor state, does not send a fake Discord incident, and does not modify the configured Cron Trigger.
