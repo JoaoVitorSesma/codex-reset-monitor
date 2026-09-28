@@ -72,8 +72,10 @@ From PowerShell, generate a strong one-time token:
 
 ```powershell
 $bytes = New-Object byte[] 32
-[Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
-$WATCHDOG_TEST_TOKEN = [Convert]::ToHexString($bytes).ToLower()
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($bytes)
+$rng.Dispose()
+$WATCHDOG_TEST_TOKEN = ([System.BitConverter]::ToString($bytes) -replace '-', '').ToLowerInvariant()
 ```
 
 Store the same token in Cloudflare:
