@@ -167,6 +167,11 @@ export async function runScheduledCycle(
     }), fetchImpl);
   }
 
+  if (env.FAILOVER_TEST_MODE === "skip_dispatch") {
+    console.log("Controlled failover test mode: skipping this Cloudflare workflow_dispatch.");
+    return { skipped_dispatch: true };
+  }
+
   try {
     await dispatchMonitor(env, fetchImpl);
   } catch (error) {
@@ -184,6 +189,8 @@ export async function runScheduledCycle(
     }
     throw error;
   }
+
+  return { skipped_dispatch: false };
 }
 
 function bearerToken(request) {
