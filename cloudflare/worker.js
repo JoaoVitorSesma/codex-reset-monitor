@@ -143,6 +143,49 @@ export async function maybeAlertStaleRun(
   return true;
 }
 
+export async function maybeAlertFailedRun(
+  env,
+  run,
+  { fetchImpl = fetch } = {},
+) {
+  if (!run || run.status !== "completed") return false;
+
+  const conclusion = String(run.conclusion || "").toLowerCase();
+  if (!conclusion || conclusion === "success" || conclusion === "skipped") return false;
+
+  const alertKey = `failed-run:${run.id}:${conclusion}`;
+  if (env.WATCHDOG_KV) {
+    const alreadySent = await env.WATCHDOG_KV.get(alertKey);
+    if (alreadySent) return false;
+    await env.WATCHDOG_KV.put(alertKey, "1", { expirationTtl: 21600 });
+  }
+
+  await sendDiscord(env, watchdogAlertPayload({
+    title: "🔴 CODEX MONITOR — WORKFLOW FALHOU",
+    description:
+      "O GitHub Actions recebeu uma execução recente do monitor, mas ela terminou sem sucesso. " +
+      "O Cloudflare continuará tentando iniciar novas execuções normalmente.",
+    fields: [
+      {
+        name: "Run",
+        value: run.html_url ? `#${run.run_number || run.id} — ${run.html_url}` : String(run.run_number || run.id),
+        inline: false,
+      },
+      {
+        name: "Resultado",
+        value: conclusion,
+        inline: true,
+      },
+      {
+        name: "Criado em",
+        value: run.created_at || "desconhecido",
+        inline: true,
+      },
+    ],
+  }), fetchImpl);
+  return true;
+}
+
 export async function runScheduledCycle(
   env,
   { fetchImpl = fetch, nowMs = Date.now() } = {},
@@ -151,7 +194,10 @@ export async function runScheduledCycle(
 
   try {
     const run = await latestRun(env, fetchImpl);
-    await maybeAlertStaleRun(env, run, { nowMs, fetchImpl });
+    const failedAlertSent = await maybeAlertFailedRun(env, run, { fetchImpl });
+    if (!failedAlertSent) {
+      await maybeAlertStaleRun(env, run, { nowMs, fetchImpl });
+    }
   } catch (error) {
     lookupFailed = true;
     await sendDiscord(env, watchdogAlertPayload({
