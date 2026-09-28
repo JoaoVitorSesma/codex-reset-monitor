@@ -209,3 +209,35 @@ test("stale helper returns false outside the stale window", async () => {
   );
   assert.equal(sent, false);
 });
+
+
+test("controlled failover mode skips Cloudflare dispatch without sending a false alert", async () => {
+  const nowMs = Date.parse("2026-09-28T12:00:00Z");
+  const calls = [];
+  const fetchImpl = async (url, options = {}) => {
+    calls.push({ url: String(url), method: options.method || "GET", body: options.body });
+    if (String(url).includes("/runs?per_page=1")) {
+      return jsonResponse({
+        workflow_runs: [{
+          id: 20,
+          created_at: "2026-09-28T11:50:00Z",
+          status: "completed",
+          conclusion: "success",
+        }],
+      });
+    }
+    if (String(url).startsWith("https://discord.example/")) {
+      return new Response(null, { status: 204 });
+    }
+    throw new Error(`unexpected URL: ${url}`);
+  };
+
+  const result = await runScheduledCycle(
+    makeEnv({ FAILOVER_TEST_MODE: "skip_dispatch" }),
+    { fetchImpl, nowMs },
+  );
+
+  assert.equal(result.skipped_dispatch, true);
+  assert.equal(calls.filter((c) => c.url.includes("/dispatches")).length, 0);
+  assert.equal(calls.filter((c) => c.url.startsWith("https://discord.example/")).length, 0);
+});
