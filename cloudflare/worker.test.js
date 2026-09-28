@@ -3,6 +3,7 @@ import test from "node:test";
 
 import worker, {
   controlledWatchdogTestPayload,
+  maybeAlertFailedRun,
   maybeAlertStaleRun,
   runScheduledCycle,
 } from "./worker.js";
@@ -240,4 +241,121 @@ test("controlled failover mode skips Cloudflare dispatch without sending a false
   assert.equal(result.skipped_dispatch, true);
   assert.equal(calls.filter((c) => c.url.includes("/dispatches")).length, 0);
   assert.equal(calls.filter((c) => c.url.startsWith("https://discord.example/")).length, 0);
+});
+
+
+test("failed completed run alerts Discord and still dispatches next monitor", async () => {
+  const nowMs = Date.parse("2026-09-28T12:00:00Z");
+  const calls = [];
+  const fetchImpl = async (url, options = {}) => {
+    calls.push({ url: String(url), method: options.method || "GET", body: options.body });
+    if (String(url).includes("/runs?per_page=1")) {
+      return jsonResponse({
+        workflow_runs: [{
+          id: 30,
+          run_number: 300,
+          html_url: "https://github.com/example/actions/runs/30",
+          created_at: "2026-09-28T11:50:00Z",
+          status: "completed",
+          conclusion: "failure",
+        }],
+      });
+    }
+    if (String(url).includes("/dispatches")) {
+      return new Response(null, { status: 204 });
+    }
+    if (String(url).startsWith("https://discord.example/")) {
+      return new Response(null, { status: 204 });
+    }
+    throw new Error(`unexpected URL: ${url}`);
+  };
+
+  await runScheduledCycle(makeEnv(), { fetchImpl, nowMs });
+
+  const discordCalls = calls.filter((c) => c.url.startsWith("https://discord.example/"));
+  assert.equal(discordCalls.length, 1);
+  assert.match(discordCalls[0].body, /WORKFLOW FALHOU/);
+  assert.match(discordCalls[0].body, /failure/);
+  assert.equal(calls.filter((c) => c.url.includes("/dispatches")).length, 1);
+});
+
+test("successful or in-progress run does not trigger failed-run alert", async () => {
+  const fetchImpl = async () => {
+    throw new Error("Discord must not be called");
+  };
+
+  assert.equal(
+    await maybeAlertFailedRun(
+      makeEnv(),
+      { id: 31, status: "completed", conclusion: "success" },
+      { fetchImpl },
+    ),
+    false,
+  );
+  assert.equal(
+    await maybeAlertFailedRun(
+      makeEnv(),
+      { id: 32, status: "in_progress", conclusion: null },
+      { fetchImpl },
+    ),
+    false,
+  );
+});
+
+test("failed-run alert is deduplicated by KV", async () => {
+  const store = new Map();
+  const kv = {
+    async get(key) { return store.get(key) || null; },
+    async put(key, value) { store.set(key, value); },
+  };
+  const calls = [];
+  const fetchImpl = async (url, options = {}) => {
+    calls.push({ url: String(url), body: options.body });
+    return new Response(null, { status: 204 });
+  };
+  const env = makeEnv({ WATCHDOG_KV: kv });
+  const run = {
+    id: 33,
+    run_number: 303,
+    status: "completed",
+    conclusion: "failure",
+    created_at: "2026-09-28T11:50:00Z",
+  };
+
+  assert.equal(await maybeAlertFailedRun(env, run, { fetchImpl }), true);
+  assert.equal(await maybeAlertFailedRun(env, run, { fetchImpl }), false);
+  assert.equal(calls.length, 1);
+});
+
+test("failed stale run emits failure alert instead of duplicate stale alert", async () => {
+  const nowMs = Date.parse("2026-09-28T12:00:00Z");
+  const calls = [];
+  const fetchImpl = async (url, options = {}) => {
+    calls.push({ url: String(url), method: options.method || "GET", body: options.body });
+    if (String(url).includes("/runs?per_page=1")) {
+      return jsonResponse({
+        workflow_runs: [{
+          id: 34,
+          run_number: 304,
+          created_at: "2026-09-28T11:00:00Z",
+          status: "completed",
+          conclusion: "failure",
+        }],
+      });
+    }
+    if (String(url).includes("/dispatches")) {
+      return new Response(null, { status: 204 });
+    }
+    if (String(url).startsWith("https://discord.example/")) {
+      return new Response(null, { status: 204 });
+    }
+    throw new Error(`unexpected URL: ${url}`);
+  };
+
+  await runScheduledCycle(makeEnv(), { fetchImpl, nowMs });
+
+  const discordCalls = calls.filter((c) => c.url.startsWith("https://discord.example/"));
+  assert.equal(discordCalls.length, 1);
+  assert.match(discordCalls[0].body, /WORKFLOW FALHOU/);
+  assert.doesNotMatch(discordCalls[0].body, /EXECUÇÃO ATRASADA/);
 });
