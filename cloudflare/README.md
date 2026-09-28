@@ -27,13 +27,15 @@ npx wrangler deploy
 
 The cron in `wrangler.toml` runs at `:07, :22, :37, :52` every hour. The GitHub fallback probe runs at `:12, :27, :42, :57`; when it finds a healthy external dispatch from the previous 10 minutes, it exits without running the monitor a second time.
 
-## Optional KV deduplication
+## KV deduplication
 
-The Worker works without KV. Without KV, watchdog alerts are limited to the first 15-minute stale window to avoid spam.
+The production Worker binds the Cloudflare KV namespace `codex-reset-watchdog` as `WATCHDOG_KV`.
 
-For stronger watchdog deduplication, bind a KV namespace as `WATCHDOG_KV`. The Worker will then remember the workflow-run ID that already generated an alert for six hours.
+The Worker remembers each stale-run or failed-run alert for six hours, preventing the same incident from being sent repeatedly on every cron tick.
 
 The deduplication marker is persisted only **after Discord confirms a successful delivery**. If Discord returns an error, the KV key is not written, so the same incident remains eligible for retry on a later watchdog cycle instead of being incorrectly marked as already notified.
+
+If the KV binding is removed, the Worker still operates, but stale alerts fall back to the first 15-minute stale window and failed-run alerts may repeat while the failed run remains the latest observed run.
 
 ## Manual health endpoint
 
