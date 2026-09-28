@@ -33,6 +33,8 @@ The Worker works without KV. Without KV, watchdog alerts are limited to the firs
 
 For stronger watchdog deduplication, bind a KV namespace as `WATCHDOG_KV`. The Worker will then remember the workflow-run ID that already generated an alert for six hours.
 
+The deduplication marker is persisted only **after Discord confirms a successful delivery**. If Discord returns an error, the KV key is not written, so the same incident remains eligible for retry on a later watchdog cycle instead of being incorrectly marked as already notified.
+
 ## Manual health endpoint
 
 Opening the deployed Worker URL returns only non-secret health information about the latest GitHub workflow run. It never returns the GitHub token or Discord webhook.
