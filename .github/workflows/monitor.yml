@@ -123,4 +123,25 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add state/alerts.json
           git commit -m "chore: update monitor state"
-          git push
+
+          # main can advance while this run is executing (for example, when a
+          # PR is merged). Retry a rejected push by rebasing the state commit
+          # onto the latest main instead of turning that harmless race into a
+          # failed monitor run.
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+
+            echo "State push attempt $attempt was rejected; rebasing onto latest main."
+            git fetch origin main
+
+            if ! git rebase origin/main; then
+              git rebase --abort || true
+              echo "::error::Could not rebase monitor state onto latest main."
+              exit 1
+            fi
+          done
+
+          echo "::error::Could not persist monitor state after 3 push attempts."
+          exit 1
