@@ -10,16 +10,16 @@ function githubHeaders(env) {
     "Accept": "application/vnd.github+json",
     "Authorization": `Bearer ${env.GITHUB_TOKEN}`,
     "X-GitHub-Api-Version": "2026-03-10",
-    "User-Agent": "codex-reset-monitor-cloudflare-scheduler/1.0",
+    "User-Agent": "codex-reset-monitor-cloudflare-scheduler/1.1",
   };
 }
 
-async function latestRun(env) {
+export async function latestRun(env, fetchImpl = fetch) {
   const repository = env.GITHUB_REPOSITORY || DEFAULTS.repository;
   const workflow = env.GITHUB_WORKFLOW || DEFAULTS.workflow;
   const url =
     `https://api.github.com/repos/${repository}/actions/workflows/${workflow}/runs?per_page=1`;
-  const response = await fetch(url, { headers: githubHeaders(env) });
+  const response = await fetchImpl(url, { headers: githubHeaders(env) });
   if (!response.ok) {
     throw new Error(`GitHub runs lookup failed: ${response.status} ${await response.text()}`);
   }
@@ -27,14 +27,14 @@ async function latestRun(env) {
   return data.workflow_runs?.[0] || null;
 }
 
-async function dispatchMonitor(env) {
+export async function dispatchMonitor(env, fetchImpl = fetch) {
   const repository = env.GITHUB_REPOSITORY || DEFAULTS.repository;
   const workflow = env.GITHUB_WORKFLOW || DEFAULTS.workflow;
   const ref = env.GITHUB_REF || DEFAULTS.ref;
   const url =
     `https://api.github.com/repos/${repository}/actions/workflows/${workflow}/dispatches`;
 
-  const response = await fetch(url, {
+  const response = await fetchImpl(url, {
     method: "POST",
     headers: {
       ...githubHeaders(env),
@@ -53,9 +53,9 @@ async function dispatchMonitor(env) {
   }
 }
 
-async function sendDiscord(env, payload) {
+export async function sendDiscord(env, payload, fetchImpl = fetch) {
   if (!env.DISCORD_WEBHOOK_URL) return;
-  const response = await fetch(env.DISCORD_WEBHOOK_URL, {
+  const response = await fetchImpl(env.DISCORD_WEBHOOK_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -65,64 +65,177 @@ async function sendDiscord(env, payload) {
   }
 }
 
-async function maybeAlertStaleRun(env, run) {
-  if (!run?.created_at) return;
+function watchdogAlertPayload({ title, description, fields = [], color = 0xE74C3C }) {
+  return {
+    username: "Codex Reset Monitor",
+    embeds: [{
+      title,
+      description,
+      color,
+      fields,
+      timestamp: new Date().toISOString(),
+    }],
+  };
+}
+
+export function controlledWatchdogTestPayload() {
+  return watchdogAlertPayload({
+    title: "🧪 CODEX WATCHDOG — TESTE CONTROLADO",
+    description:
+      "Teste manual do caminho direto Cloudflare → Discord. " +
+      "Nenhuma falha real foi detectada e nenhum estado do monitor foi alterado.",
+    color: 0x3498DB,
+    fields: [
+      {
+        name: "Objetivo",
+        value: "Validar que o watchdog externo consegue avisar o Discord mesmo sem depender do GitHub Actions.",
+        inline: false,
+      },
+    ],
+  });
+}
+
+export async function maybeAlertStaleRun(
+  env,
+  run,
+  { nowMs = Date.now(), fetchImpl = fetch } = {},
+) {
+  if (!run?.created_at) return false;
 
   const staleMinutes = Number(env.WATCHDOG_STALE_MINUTES || DEFAULTS.staleMinutes);
-  const ageMinutes = (Date.now() - Date.parse(run.created_at)) / 60000;
-  if (ageMinutes < staleMinutes) return;
+  const ageMinutes = (nowMs - Date.parse(run.created_at)) / 60000;
+  if (ageMinutes < staleMinutes) return false;
 
   const alertKey = `stale-run:${run.id}`;
   if (env.WATCHDOG_KV) {
     const alreadySent = await env.WATCHDOG_KV.get(alertKey);
-    if (alreadySent) return;
+    if (alreadySent) return false;
     await env.WATCHDOG_KV.put(alertKey, "1", { expirationTtl: 21600 });
   } else {
     // Without KV, alert only during the first 15-minute stale window so the
     // watchdog does not spam Discord on every cron tick.
-    if (ageMinutes >= staleMinutes + 15) return;
+    if (ageMinutes >= staleMinutes + 15) return false;
   }
 
-  await sendDiscord(env, {
-    username: "Codex Reset Monitor",
-    embeds: [{
-      title: "🔴 CODEX MONITOR — EXECUÇÃO ATRASADA",
+  await sendDiscord(env, watchdogAlertPayload({
+    title: "🔴 CODEX MONITOR — EXECUÇÃO ATRASADA",
+    description:
+      "O relógio externo detectou que o workflow principal não executa dentro da janela esperada. " +
+      "O Cloudflare continuará tentando dispará-lo.",
+    fields: [
+      {
+        name: "Última execução observada",
+        value: run.created_at,
+        inline: false,
+      },
+      {
+        name: "Atraso aproximado",
+        value: `~${Math.floor(ageMinutes)} min`,
+        inline: true,
+      },
+      {
+        name: "Último resultado",
+        value: run.conclusion || run.status || "desconhecido",
+        inline: true,
+      },
+    ],
+  }), fetchImpl);
+  return true;
+}
+
+export async function runScheduledCycle(
+  env,
+  { fetchImpl = fetch, nowMs = Date.now() } = {},
+) {
+  let lookupFailed = false;
+
+  try {
+    const run = await latestRun(env, fetchImpl);
+    await maybeAlertStaleRun(env, run, { nowMs, fetchImpl });
+  } catch (error) {
+    lookupFailed = true;
+    await sendDiscord(env, watchdogAlertPayload({
+      title: "🔴 CODEX WATCHDOG — GITHUB INDISPONÍVEL",
       description:
-        "O relógio externo detectou que o workflow principal não executa dentro da janela esperada. " +
-        "O Cloudflare continuará tentando dispará-lo.",
-      color: 0xE74C3C,
-      fields: [
-        {
-          name: "Última execução observada",
-          value: run.created_at,
+        "O Cloudflare não conseguiu consultar o estado recente do GitHub Actions. " +
+        "O disparo do workflow ainda será tentado.",
+      fields: [{
+        name: "Erro",
+        value: String(error?.message || error).slice(0, 900),
+        inline: false,
+      }],
+    }), fetchImpl);
+  }
+
+  try {
+    await dispatchMonitor(env, fetchImpl);
+  } catch (error) {
+    if (!lookupFailed) {
+      await sendDiscord(env, watchdogAlertPayload({
+        title: "🔴 CODEX WATCHDOG — FALHA AO DISPARAR WORKFLOW",
+        description:
+          "O Cloudflare tentou iniciar o monitor no GitHub Actions, mas o workflow_dispatch falhou.",
+        fields: [{
+          name: "Erro",
+          value: String(error?.message || error).slice(0, 900),
           inline: false,
-        },
-        {
-          name: "Atraso aproximado",
-          value: `~${Math.floor(ageMinutes)} min`,
-          inline: true,
-        },
-        {
-          name: "Último resultado",
-          value: run.conclusion || run.status || "desconhecido",
-          inline: true,
-        },
-      ],
-      timestamp: new Date().toISOString(),
-    }],
-  });
+        }],
+      }), fetchImpl);
+    }
+    throw error;
+  }
+}
+
+function bearerToken(request) {
+  const value = request.headers.get("Authorization") || "";
+  return value.startsWith("Bearer ") ? value.slice(7) : "";
 }
 
 export default {
   async scheduled(_controller, env, ctx) {
-    ctx.waitUntil((async () => {
-      const run = await latestRun(env);
-      await maybeAlertStaleRun(env, run);
-      await dispatchMonitor(env);
-    })());
+    ctx.waitUntil(runScheduledCycle(env));
   },
 
-  async fetch(_request, env) {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+
+    if (url.pathname === "/watchdog-test") {
+      if (request.method !== "POST") {
+        return Response.json(
+          { ok: false, error: "method_not_allowed" },
+          { status: 405, headers: { Allow: "POST" } },
+        );
+      }
+
+      if (!env.WATCHDOG_TEST_TOKEN) {
+        return Response.json(
+          { ok: false, error: "watchdog_test_disabled" },
+          { status: 404 },
+        );
+      }
+
+      if (bearerToken(request) !== env.WATCHDOG_TEST_TOKEN) {
+        return Response.json(
+          { ok: false, error: "unauthorized" },
+          { status: 401 },
+        );
+      }
+
+      try {
+        await sendDiscord(env, controlledWatchdogTestPayload());
+        return Response.json({
+          ok: true,
+          test: "watchdog_direct_discord",
+          state_changed: false,
+        });
+      } catch (error) {
+        return Response.json(
+          { ok: false, error: String(error?.message || error) },
+          { status: 500 },
+        );
+      }
+    }
+
     // Lightweight manual health endpoint. It never exposes secrets.
     try {
       const run = await latestRun(env);

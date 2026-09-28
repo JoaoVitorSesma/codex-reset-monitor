@@ -93,7 +93,7 @@ Todos esses horários são apresentados em **BRT (America/Sao_Paulo)**.
 
 O monitor mantém estado por fonte e atualiza `last_success` em toda execução bem-sucedida. Uma falha isolada não gera ruído. O alerta de cobertura degradada ocorre após **3 falhas consecutivas** ou quando a primeira falha persiste por aproximadamente **45 minutos**. Quando a fonte volta a responder, é enviado um aviso de recuperação.
 
-O Worker externo também atua como watchdog do próprio GitHub Actions: se a execução principal ficar atrasada além da janela configurada, ele pode alertar diretamente no Discord e continuar tentando disparar o workflow.
+O Worker externo também atua como watchdog do próprio GitHub Actions: se a execução principal ficar atrasada além da janela configurada, ele pode alertar diretamente no Discord e continuar tentando disparar o workflow. A V3.1 também trata falhas na consulta do GitHub e falhas no próprio `workflow_dispatch`: nesses casos, o Cloudflare tenta avisar o Discord diretamente, sem depender do GitHub Actions para entregar o alerta.
 
 Isso diferencia:
 
@@ -129,7 +129,9 @@ Os testes atuais cobrem:
 - regressão do reset perdido de 26/09/2026;
 - exemplos/documentação do Help Center não virarem falsos alertas;
 - alerta de saúde por falhas consecutivas ou tempo degradado;
-- sintaxe do Worker Cloudflare.
+- sintaxe do Worker Cloudflare;
+- watchdog Cloudflare com run saudável, run atrasado, falha de consulta ao GitHub e falha de `workflow_dispatch`;
+- endpoint protegido de teste direto Cloudflare → Discord.
 
 ## Frequência, scheduler externo e custo
 
@@ -137,7 +139,7 @@ O Cloudflare mantém o gatilho principal a cada **15 minutos**, nos minutos `:07
 
 Como o repositório é público e usa runner GitHub-hosted padrão (`ubuntu-latest`), o monitor não consome a franquia mensal destinada a runners padrão de repositórios privados. O Worker foi projetado para caber no uso gratuito esperado deste monitor.
 
-Para ativar o relógio externo, siga `cloudflare/README.md`. Os segredos necessários ficam apenas no Cloudflare: um fine-grained GitHub token limitado ao repositório e o webhook já existente do Discord.
+Para ativar o relógio externo, siga `cloudflare/README.md`. Os segredos necessários ficam apenas no Cloudflare: um fine-grained GitHub token limitado ao repositório e o webhook já existente do Discord. O mesmo guia inclui um teste controlado e autenticado do caminho direto Cloudflare → Discord; ele não altera o estado do monitor nem cria um incidente falso.
 
 ## Heartbeat
 

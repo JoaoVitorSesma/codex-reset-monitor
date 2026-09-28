@@ -61,3 +61,67 @@ npx wrangler deploy
 ```
 
 Then wait for the next `:07/:22/:37/:52` UTC trigger and confirm that GitHub Actions shows a `workflow_dispatch` run for **Codex Reset Monitor**. The GitHub fallback probe runs five minutes later at `:12/:27/:42/:57`; when the Cloudflare-triggered run is healthy, the fallback workflow should stop at the gate instead of repeating the monitor.
+
+## Controlled watchdog test
+
+V3.1 includes a protected manual endpoint for testing the direct Cloudflare → Discord watchdog path without creating a fake production incident or changing monitor state.
+
+The endpoint is disabled unless the Cloudflare secret `WATCHDOG_TEST_TOKEN` exists.
+
+From PowerShell, generate a strong one-time token:
+
+```powershell
+$bytes = New-Object byte[] 32
+[Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+$WATCHDOG_TEST_TOKEN = [Convert]::ToHexString($bytes).ToLower()
+```
+
+Store the same token in Cloudflare:
+
+```powershell
+npx wrangler secret put WATCHDOG_TEST_TOKEN
+```
+
+Paste the value shown by:
+
+```powershell
+$WATCHDOG_TEST_TOKEN
+```
+
+Then deploy the current Worker:
+
+```powershell
+npx wrangler deploy
+```
+
+Run the controlled test:
+
+```powershell
+$headers = @{ Authorization = "Bearer $WATCHDOG_TEST_TOKEN" }
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "https://codex-reset-scheduler.codex-reset-monitor-jv.workers.dev/watchdog-test" `
+  -Headers $headers
+```
+
+Expected HTTP result:
+
+```json
+{
+  "ok": true,
+  "test": "watchdog_direct_discord",
+  "state_changed": false
+}
+```
+
+Discord should receive a blue message titled:
+
+`🧪 CODEX WATCHDOG — TESTE CONTROLADO`
+
+This test only verifies the direct Cloudflare → Discord emergency notification path. It does not mark any reset event, alter `state/alerts.json`, or simulate a real outage.
+
+The Worker also has automated tests for:
+- fresh GitHub run → no watchdog alert, but dispatch still occurs;
+- stale GitHub run → watchdog alert + dispatch attempt;
+- GitHub status lookup failure → direct Discord alert + dispatch attempt;
+- workflow dispatch failure → direct Discord watchdog alert.
