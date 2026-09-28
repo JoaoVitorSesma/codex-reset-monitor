@@ -42,10 +42,10 @@ test("fresh run dispatches GitHub without Discord watchdog alert", async () => {
       });
     }
     if (String(url).includes("/dispatches")) {
-      return new Response("", { status: 204 });
+      return new Response(null, { status: 204 });
     }
     if (String(url).startsWith("https://discord.example/")) {
-      return new Response("", { status: 204 });
+      return new Response(null, { status: 204 });
     }
     throw new Error(`unexpected URL: ${url}`);
   };
@@ -72,10 +72,10 @@ test("stale run alerts Discord and still dispatches GitHub", async () => {
       });
     }
     if (String(url).includes("/dispatches")) {
-      return new Response("", { status: 204 });
+      return new Response(null, { status: 204 });
     }
     if (String(url).startsWith("https://discord.example/")) {
-      return new Response("", { status: 204 });
+      return new Response(null, { status: 204 });
     }
     throw new Error(`unexpected URL: ${url}`);
   };
@@ -96,10 +96,10 @@ test("GitHub lookup failure alerts Discord and still attempts dispatch", async (
       return new Response("upstream unavailable", { status: 503 });
     }
     if (String(url).includes("/dispatches")) {
-      return new Response("", { status: 204 });
+      return new Response(null, { status: 204 });
     }
     if (String(url).startsWith("https://discord.example/")) {
-      return new Response("", { status: 204 });
+      return new Response(null, { status: 204 });
     }
     throw new Error(`unexpected URL: ${url}`);
   };
@@ -130,7 +130,7 @@ test("dispatch failure alerts Discord when lookup was healthy", async () => {
       return new Response("forbidden", { status: 403 });
     }
     if (String(url).startsWith("https://discord.example/")) {
-      return new Response("", { status: 204 });
+      return new Response(null, { status: 204 });
     }
     throw new Error(`unexpected URL: ${url}`);
   };
@@ -157,7 +157,7 @@ test("watchdog-test endpoint requires token and sends direct Discord test", asyn
   globalThis.fetch = async (url, options = {}) => {
     calls.push({ url: String(url), method: options.method || "GET", body: options.body });
     if (String(url).startsWith("https://discord.example/")) {
-      return new Response("", { status: 204 });
+      return new Response(null, { status: 204 });
     }
     throw new Error(`unexpected URL: ${url}`);
   };
