@@ -30,5 +30,8 @@ jobs:
       - name: Check Cloudflare scheduler syntax
         run: node --check cloudflare/worker.js
 
+      - name: Run Cloudflare watchdog tests
+        run: node --test cloudflare/worker.test.js
+
       - name: Run tests
         run: pytest -q
