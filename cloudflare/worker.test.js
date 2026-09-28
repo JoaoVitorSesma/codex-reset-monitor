@@ -359,3 +359,173 @@ test("failed stale run emits failure alert instead of duplicate stale alert", as
   assert.match(discordCalls[0].body, /WORKFLOW FALHOU/);
   assert.doesNotMatch(discordCalls[0].body, /EXECUÇÃO ATRASADA/);
 });
+
+
+test("failed-run KV marker is written only after Discord confirms delivery", async () => {
+  const events = [];
+  const store = new Map();
+  const kv = {
+    async get(key) {
+      events.push(`kv.get:${key}`);
+      return store.get(key) || null;
+    },
+    async put(key, value, options) {
+      events.push(`kv.put:${key}`);
+      assert.equal(options.expirationTtl, 21600);
+      store.set(key, value);
+    },
+  };
+  const env = makeEnv({ WATCHDOG_KV: kv });
+  const run = {
+    id: 40,
+    run_number: 340,
+    status: "completed",
+    conclusion: "failure",
+    created_at: "2026-09-28T11:50:00Z",
+  };
+  const fetchImpl = async (url) => {
+    assert.ok(String(url).startsWith("https://discord.example/"));
+    events.push("discord");
+    return new Response(null, { status: 204 });
+  };
+
+  assert.equal(await maybeAlertFailedRun(env, run, { fetchImpl }), true);
+  assert.deepEqual(events, [
+    "kv.get:failed-run:40:failure",
+    "discord",
+    "kv.put:failed-run:40:failure",
+  ]);
+
+  events.length = 0;
+  assert.equal(await maybeAlertFailedRun(env, run, { fetchImpl }), false);
+  assert.deepEqual(events, ["kv.get:failed-run:40:failure"]);
+});
+
+test("failed-run Discord failure does not consume KV deduplication", async () => {
+  const store = new Map();
+  let putCount = 0;
+  const kv = {
+    async get(key) { return store.get(key) || null; },
+    async put(key, value) {
+      putCount += 1;
+      store.set(key, value);
+    },
+  };
+  const env = makeEnv({ WATCHDOG_KV: kv });
+  const run = {
+    id: 41,
+    run_number: 341,
+    status: "completed",
+    conclusion: "failure",
+    created_at: "2026-09-28T11:50:00Z",
+  };
+
+  await assert.rejects(
+    () => maybeAlertFailedRun(env, run, {
+      fetchImpl: async () => new Response("discord unavailable", { status: 503 }),
+    }),
+    /Discord watchdog alert failed/,
+  );
+  assert.equal(putCount, 0);
+  assert.equal(store.size, 0);
+
+  assert.equal(
+    await maybeAlertFailedRun(env, run, {
+      fetchImpl: async () => new Response(null, { status: 204 }),
+    }),
+    true,
+  );
+  assert.equal(putCount, 1);
+  assert.equal(store.get("failed-run:41:failure"), "1");
+});
+
+test("stale-run KV marker is written only after Discord confirms delivery", async () => {
+  const events = [];
+  const store = new Map();
+  const kv = {
+    async get(key) {
+      events.push(`kv.get:${key}`);
+      return store.get(key) || null;
+    },
+    async put(key, value, options) {
+      events.push(`kv.put:${key}`);
+      assert.equal(options.expirationTtl, 21600);
+      store.set(key, value);
+    },
+  };
+  const env = makeEnv({ WATCHDOG_KV: kv });
+  const run = {
+    id: 42,
+    created_at: "2026-09-28T11:00:00Z",
+    status: "completed",
+    conclusion: "success",
+  };
+  const fetchImpl = async (url) => {
+    assert.ok(String(url).startsWith("https://discord.example/"));
+    events.push("discord");
+    return new Response(null, { status: 204 });
+  };
+
+  assert.equal(
+    await maybeAlertStaleRun(env, run, {
+      nowMs: Date.parse("2026-09-28T12:00:00Z"),
+      fetchImpl,
+    }),
+    true,
+  );
+  assert.deepEqual(events, [
+    "kv.get:stale-run:42",
+    "discord",
+    "kv.put:stale-run:42",
+  ]);
+
+  events.length = 0;
+  assert.equal(
+    await maybeAlertStaleRun(env, run, {
+      nowMs: Date.parse("2026-09-28T12:00:00Z"),
+      fetchImpl,
+    }),
+    false,
+  );
+  assert.deepEqual(events, ["kv.get:stale-run:42"]);
+});
+
+test("stale-run Discord failure does not consume KV deduplication", async () => {
+  const store = new Map();
+  let putCount = 0;
+  const kv = {
+    async get(key) { return store.get(key) || null; },
+    async put(key, value) {
+      putCount += 1;
+      store.set(key, value);
+    },
+  };
+  const env = makeEnv({ WATCHDOG_KV: kv });
+  const run = {
+    id: 43,
+    created_at: "2026-09-28T11:00:00Z",
+    status: "completed",
+    conclusion: "success",
+  };
+  const options = { nowMs: Date.parse("2026-09-28T12:00:00Z") };
+
+  await assert.rejects(
+    () => maybeAlertStaleRun(env, run, {
+      ...options,
+      fetchImpl: async () => new Response("discord unavailable", { status: 503 }),
+    }),
+    /Discord watchdog alert failed/,
+  );
+  assert.equal(putCount, 0);
+  assert.equal(store.size, 0);
+
+  assert.equal(
+    await maybeAlertStaleRun(env, run, {
+      ...options,
+      fetchImpl: async () => new Response(null, { status: 204 }),
+    }),
+    true,
+  );
+  assert.equal(putCount, 1);
+  assert.equal(store.get("stale-run:43"), "1");
+});

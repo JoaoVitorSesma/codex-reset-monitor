@@ -110,7 +110,6 @@ export async function maybeAlertStaleRun(
   if (env.WATCHDOG_KV) {
     const alreadySent = await env.WATCHDOG_KV.get(alertKey);
     if (alreadySent) return false;
-    await env.WATCHDOG_KV.put(alertKey, "1", { expirationTtl: 21600 });
   } else {
     // Without KV, alert only during the first 15-minute stale window so the
     // watchdog does not spam Discord on every cron tick.
@@ -140,6 +139,11 @@ export async function maybeAlertStaleRun(
       },
     ],
   }), fetchImpl);
+
+  if (env.WATCHDOG_KV) {
+    await env.WATCHDOG_KV.put(alertKey, "1", { expirationTtl: 21600 });
+  }
+
   return true;
 }
 
@@ -157,7 +161,6 @@ export async function maybeAlertFailedRun(
   if (env.WATCHDOG_KV) {
     const alreadySent = await env.WATCHDOG_KV.get(alertKey);
     if (alreadySent) return false;
-    await env.WATCHDOG_KV.put(alertKey, "1", { expirationTtl: 21600 });
   }
 
   await sendDiscord(env, watchdogAlertPayload({
@@ -183,6 +186,11 @@ export async function maybeAlertFailedRun(
       },
     ],
   }), fetchImpl);
+
+  if (env.WATCHDOG_KV) {
+    await env.WATCHDOG_KV.put(alertKey, "1", { expirationTtl: 21600 });
+  }
+
   return true;
 }
 
