@@ -5,6 +5,10 @@ compatibility_date = "2026-09-26"
 [triggers]
 crons = ["7,22,37,52 * * * *"]
 
+[[kv_namespaces]]
+binding = "WATCHDOG_KV"
+id = "a15abc792ea84d169bb33c6880d191db"
+
 [vars]
 GITHUB_REPOSITORY = "JoaoVitorSesma/codex-reset-monitor"
 GITHUB_WORKFLOW = "monitor.yml"
