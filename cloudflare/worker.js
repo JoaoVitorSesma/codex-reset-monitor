@@ -5,6 +5,8 @@ const DEFAULTS = {
   staleMinutes: 40,
 };
 
+const WATCHDOG_OUTAGE_KEY = "watchdog:outage-open";
+
 function githubHeaders(env) {
   return {
     "Accept": "application/vnd.github+json",
@@ -95,6 +97,82 @@ export function controlledWatchdogTestPayload() {
   });
 }
 
+function runAgeMinutes(run, nowMs) {
+  if (!run?.created_at) return null;
+  return (nowMs - Date.parse(run.created_at)) / 60000;
+}
+
+function isRunStale(env, run, nowMs) {
+  const ageMinutes = runAgeMinutes(run, nowMs);
+  if (ageMinutes === null) return false;
+  const staleMinutes = Number(env.WATCHDOG_STALE_MINUTES || DEFAULTS.staleMinutes);
+  return ageMinutes >= staleMinutes;
+}
+
+function isCompletedHealthyRun(run) {
+  return run?.status === "completed" && run?.conclusion === "success";
+}
+
+export async function markWatchdogOutage(env, incident) {
+  if (!env.WATCHDOG_KV) return false;
+  await env.WATCHDOG_KV.put(
+    WATCHDOG_OUTAGE_KEY,
+    JSON.stringify({
+      ...incident,
+      observed_at: new Date().toISOString(),
+    }),
+  );
+  return true;
+}
+
+export async function maybeSendRecovery(
+  env,
+  run,
+  { fetchImpl = fetch } = {},
+) {
+  if (!env.WATCHDOG_KV || !isCompletedHealthyRun(run)) return false;
+
+  const raw = await env.WATCHDOG_KV.get(WATCHDOG_OUTAGE_KEY);
+  if (!raw) return false;
+
+  let incident = {};
+  try {
+    incident = JSON.parse(raw);
+  } catch {
+    incident = { type: "watchdog_error", title: "Falha anterior do watchdog" };
+  }
+
+  await sendDiscord(env, watchdogAlertPayload({
+    title: "✅ CODEX WATCHDOG — FUNCIONAMENTO RESTABELECIDO",
+    description:
+      "Após o alerta anterior, o monitor voltou ao funcionamento padrão. " +
+      "A execução mais recente terminou com sucesso e o Cloudflare conseguiu disparar o próximo ciclo normalmente.",
+    color: 0x2ECC71,
+    fields: [
+      {
+        name: "Falha anterior",
+        value: String(incident.title || incident.type || "Falha do watchdog").slice(0, 900),
+        inline: false,
+      },
+      {
+        name: "Execução saudável",
+        value: run.html_url
+          ? `#${run.run_number || run.id} — ${run.html_url}`
+          : String(run.run_number || run.id || "desconhecida"),
+        inline: false,
+      },
+      {
+        name: "Resultado",
+        value: run.conclusion || run.status || "success",
+        inline: true,
+      },
+    ],
+  }), fetchImpl);
+
+  await env.WATCHDOG_KV.delete(WATCHDOG_OUTAGE_KEY);
+  return true;
+}
+
 export async function maybeAlertStaleRun(
   env,
   run,
@@ -103,8 +181,8 @@ export async function maybeAlertStaleRun(
   if (!run?.created_at) return false;
 
   const staleMinutes = Number(env.WATCHDOG_STALE_MINUTES || DEFAULTS.staleMinutes);
-  const ageMinutes = (nowMs - Date.parse(run.created_at)) / 60000;
-  if (ageMinutes < staleMinutes) return false;
+  const ageMinutes = runAgeMinutes(run, nowMs);
+  if (ageMinutes === null || ageMinutes < staleMinutes) return false;
 
   const alertKey = `stale-run:${run.id}`;
   if (env.WATCHDOG_KV) {
@@ -199,15 +277,49 @@ export async function runScheduledCycle(
   { fetchImpl = fetch, nowMs = Date.now() } = {},
 ) {
   let lookupFailed = false;
+  let issueDetected = false;
+  let latestObservedRun = null;
+  let latestRunHealthy = false;
 
   try {
     const run = await latestRun(env, fetchImpl);
-    const failedAlertSent = await maybeAlertFailedRun(env, run, { fetchImpl });
-    if (!failedAlertSent) {
-      await maybeAlertStaleRun(env, run, { nowMs, fetchImpl });
+    latestObservedRun = run;
+
+    const conclusion = String(run?.conclusion || "").toLowerCase();
+    const failedRun =
+      run?.status === "completed" &&
+      conclusion &&
+      conclusion !== "success" &&
+      conclusion !== "skipped";
+    const staleRun = isRunStale(env, run, nowMs);
+
+    if (failedRun) {
+      issueDetected = true;
+      const failedAlertSent = await maybeAlertFailedRun(env, run, { fetchImpl });
+      if (failedAlertSent) {
+        await markWatchdogOutage(env, {
+          type: "workflow_failure",
+          title: "CODEX MONITOR — WORKFLOW FALHOU",
+          run_id: run.id,
+          conclusion,
+        });
+      }
+    } else if (staleRun) {
+      issueDetected = true;
+      const staleAlertSent = await maybeAlertStaleRun(env, run, { nowMs, fetchImpl });
+      if (staleAlertSent) {
+        await markWatchdogOutage(env, {
+          type: "stale_run",
+          title: "CODEX MONITOR — EXECUÇÃO ATRASADA",
+          run_id: run.id,
+        });
+      }
+    } else {
+      latestRunHealthy = isCompletedHealthyRun(run);
     }
   } catch (error) {
     lookupFailed = true;
+    issueDetected = true;
     await sendDiscord(env, watchdogAlertPayload({
       title: "🔴 CODEX WATCHDOG — GITHUB INDISPONÍVEL",
       description:
@@ -219,6 +331,10 @@ export async function runScheduledCycle(
         inline: false,
       }],
     }), fetchImpl);
+    await markWatchdogOutage(env, {
+      type: "github_lookup_failure",
+      title: "CODEX WATCHDOG — GITHUB INDISPONÍVEL",
+    });
   }
 
   if (env.FAILOVER_TEST_MODE === "skip_dispatch") {
@@ -229,6 +345,7 @@ export async function runScheduledCycle(
   try {
     await dispatchMonitor(env, fetchImpl);
   } catch (error) {
+    issueDetected = true;
     if (!lookupFailed) {
       await sendDiscord(env, watchdogAlertPayload({
         title: "🔴 CODEX WATCHDOG — FALHA AO DISPARAR WORKFLOW",
@@ -240,8 +357,16 @@ export async function runScheduledCycle(
           inline: false,
         }],
       }), fetchImpl);
+      await markWatchdogOutage(env, {
+        type: "dispatch_failure",
+        title: "CODEX WATCHDOG — FALHA AO DISPARAR WORKFLOW",
+      });
     }
     throw error;
+  }
+
+  if (!issueDetected && latestRunHealthy) {
+    await maybeSendRecovery(env, latestObservedRun, { fetchImpl });
   }
 
   return { skipped_dispatch: false };
