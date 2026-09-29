@@ -155,6 +155,10 @@ Nunca publique ou faça commit da URL do webhook. Se ela vazar, revogue o webhoo
 
 Como o repositório é público, revise cuidadosamente qualquer Pull Request externo antes de incorporá-lo à `main`, principalmente alterações em `.github/workflows/` ou em código que tenha acesso a secrets.
 
+O repositório também possui um `.gitignore` voltado a impedir commits acidentais de arquivos locais sensíveis, como `.env`, `.dev.vars`, estado local do Wrangler e chaves privadas. O workflow `Tests` faz uma verificação adicional dos arquivos versionados e falha se encontrar formatos comuns de credenciais reais, como webhooks do Discord, tokens GitHub, chaves OpenAI, AWS, Slack ou Google. Valores fictícios usados nos testes continuam permitidos.
+
+Essas proteções reduzem o risco de novos vazamentos, mas não substituem rotação imediata caso uma credencial real seja publicada algum dia.
+
 ## Teste manual do Discord
 
 1. Abra **Actions**.
