@@ -181,3 +181,18 @@ The Cloudflare watchdog also checks the conclusion of the latest completed GitHu
 The alert identifies the run and conclusion, then Cloudflare still attempts the next normal `workflow_dispatch`. This is separate from the stale-run alert: a failed run is reported as a workflow failure rather than as an execution delay.
 
 If `WATCHDOG_KV` is configured, the same failed run is alerted only once. Without KV, repeated alerts remain possible while the failed run stays the latest observed run.
+
+## Recovery notification
+
+When a watchdog error alert is successfully delivered, the Worker records an open incident in `WATCHDOG_KV`. It does **not** send routine “all good” messages during normal operation.
+
+A green recovery message is sent only after an earlier watchdog error and only when both conditions are observed again:
+
+1. the latest GitHub monitor run is completed successfully; and
+2. Cloudflare successfully creates the next `workflow_dispatch`.
+
+The recovery message is:
+
+`✅ CODEX WATCHDOG — FUNCIONAMENTO RESTABELECIDO`
+
+After Discord confirms delivery, the open-incident marker is removed. If delivery of the recovery message fails, the marker is kept so a later healthy cycle can retry it.
