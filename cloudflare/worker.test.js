@@ -5,6 +5,7 @@ import worker, {
   controlledWatchdogTestPayload,
   maybeAlertFailedRun,
   maybeAlertStaleRun,
+  maybeSendRecovery,
   runScheduledCycle,
 } from "./worker.js";
 
@@ -528,4 +529,198 @@ test("stale-run Discord failure does not consume KV deduplication", async () => 
   );
   assert.equal(putCount, 1);
   assert.equal(store.get("stale-run:43"), "1");
+});
+
+
+test("healthy cycles do not send recovery unless an earlier watchdog error was recorded", async () => {
+  const store = new Map();
+  const kv = {
+    async get(key) { return store.get(key) || null; },
+    async put(key, value) { store.set(key, value); },
+    async delete(key) { store.delete(key); },
+  };
+  const calls = [];
+  const fetchImpl = async (url, options = {}) => {
+    calls.push({ url: String(url), method: options.method || "GET", body: options.body });
+    if (String(url).includes("/runs?per_page=1")) {
+      return jsonResponse({
+        workflow_runs: [{
+          id: 50,
+          run_number: 350,
+          created_at: "2026-09-29T12:50:00Z",
+          status: "completed",
+          conclusion: "success",
+        }],
+      });
+    }
+    if (String(url).includes("/dispatches")) {
+      return new Response(null, { status: 204 });
+    }
+    if (String(url).startsWith("https://discord.example/")) {
+      return new Response(null, { status: 204 });
+    }
+    throw new Error(`unexpected URL: ${url}`);
+  };
+
+  await runScheduledCycle(
+    makeEnv({ WATCHDOG_KV: kv }),
+    { fetchImpl, nowMs: Date.parse("2026-09-29T13:00:00Z") },
+  );
+
+  assert.equal(calls.filter((call) => call.url.startsWith("https://discord.example/")).length, 0);
+  assert.equal(store.has("watchdog:outage-open"), false);
+});
+
+test("watchdog sends one recovery message after a failed run returns to normal", async () => {
+  const store = new Map();
+  const kv = {
+    async get(key) { return store.get(key) || null; },
+    async put(key, value) { store.set(key, value); },
+    async delete(key) { store.delete(key); },
+  };
+  const calls = [];
+  let phase = "failed";
+
+  const fetchImpl = async (url, options = {}) => {
+    calls.push({ url: String(url), method: options.method || "GET", body: options.body });
+    if (String(url).includes("/runs?per_page=1")) {
+      if (phase === "failed") {
+        return jsonResponse({
+          workflow_runs: [{
+            id: 51,
+            run_number: 351,
+            html_url: "https://github.com/example/actions/runs/51",
+            created_at: "2026-09-29T12:50:00Z",
+            status: "completed",
+            conclusion: "failure",
+          }],
+        });
+      }
+      return jsonResponse({
+        workflow_runs: [{
+          id: 52,
+          run_number: 352,
+          html_url: "https://github.com/example/actions/runs/52",
+          created_at: "2026-09-29T13:05:00Z",
+          status: "completed",
+          conclusion: "success",
+        }],
+      });
+    }
+    if (String(url).includes("/dispatches")) {
+      return new Response(null, { status: 204 });
+    }
+    if (String(url).startsWith("https://discord.example/")) {
+      return new Response(null, { status: 204 });
+    }
+    throw new Error(`unexpected URL: ${url}`);
+  };
+
+  const env = makeEnv({ WATCHDOG_KV: kv });
+
+  await runScheduledCycle(
+    env,
+    { fetchImpl, nowMs: Date.parse("2026-09-29T13:00:00Z") },
+  );
+  assert.equal(store.has("watchdog:outage-open"), true);
+
+  phase = "healthy";
+  await runScheduledCycle(
+    env,
+    { fetchImpl, nowMs: Date.parse("2026-09-29T13:15:00Z") },
+  );
+  assert.equal(store.has("watchdog:outage-open"), false);
+
+  await runScheduledCycle(
+    env,
+    { fetchImpl, nowMs: Date.parse("2026-09-29T13:30:00Z") },
+  );
+
+  const discordCalls = calls.filter((call) => call.url.startsWith("https://discord.example/"));
+  assert.equal(discordCalls.length, 2);
+  assert.match(discordCalls[0].body, /WORKFLOW FALHOU/);
+  assert.match(discordCalls[1].body, /FUNCIONAMENTO RESTABELECIDO/);
+});
+
+test("watchdog does not claim recovery while the same failure is still active", async () => {
+  const store = new Map();
+  const kv = {
+    async get(key) { return store.get(key) || null; },
+    async put(key, value) { store.set(key, value); },
+    async delete(key) { store.delete(key); },
+  };
+  const calls = [];
+  const fetchImpl = async (url, options = {}) => {
+    calls.push({ url: String(url), method: options.method || "GET", body: options.body });
+    if (String(url).includes("/runs?per_page=1")) {
+      return jsonResponse({
+        workflow_runs: [{
+          id: 53,
+          run_number: 353,
+          created_at: "2026-09-29T12:50:00Z",
+          status: "completed",
+          conclusion: "failure",
+        }],
+      });
+    }
+    if (String(url).includes("/dispatches")) {
+      return new Response(null, { status: 204 });
+    }
+    if (String(url).startsWith("https://discord.example/")) {
+      return new Response(null, { status: 204 });
+    }
+    throw new Error(`unexpected URL: ${url}`);
+  };
+  const env = makeEnv({ WATCHDOG_KV: kv });
+
+  await runScheduledCycle(
+    env,
+    { fetchImpl, nowMs: Date.parse("2026-09-29T13:00:00Z") },
+  );
+  await runScheduledCycle(
+    env,
+    { fetchImpl, nowMs: Date.parse("2026-09-29T13:15:00Z") },
+  );
+
+  const discordCalls = calls.filter((call) => call.url.startsWith("https://discord.example/"));
+  assert.equal(discordCalls.length, 1);
+  assert.match(discordCalls[0].body, /WORKFLOW FALHOU/);
+  assert.equal(store.has("watchdog:outage-open"), true);
+});
+
+test("failed recovery delivery keeps the outage marker for a later retry", async () => {
+  const store = new Map([
+    ["watchdog:outage-open", JSON.stringify({
+      type: "workflow_failure",
+      title: "CODEX MONITOR — WORKFLOW FALHOU",
+    })],
+  ]);
+  const kv = {
+    async get(key) { return store.get(key) || null; },
+    async put(key, value) { store.set(key, value); },
+    async delete(key) { store.delete(key); },
+  };
+  const env = makeEnv({ WATCHDOG_KV: kv });
+  const run = {
+    id: 54,
+    run_number: 354,
+    status: "completed",
+    conclusion: "success",
+  };
+
+  await assert.rejects(
+    () => maybeSendRecovery(env, run, {
+      fetchImpl: async () => new Response("discord unavailable", { status: 503 }),
+    }),
+    /Discord watchdog alert failed/,
+  );
+  assert.equal(store.has("watchdog:outage-open"), true);
+
+  assert.equal(
+    await maybeSendRecovery(env, run, {
+      fetchImpl: async () => new Response(null, { status: 204 }),
+    }),
+    true,
+  );
+  assert.equal(store.has("watchdog:outage-open"), false);
 });
