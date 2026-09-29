@@ -104,7 +104,16 @@ def test_yellow_and_green_are_merged_into_same_event():
     assert len(event2["sources"]) == 2
 
 
-def test_tracker_history_parser_accepts_current_ledger_shape():
+def test_tracker_history_parser_accepts_current_ledger_shape(monkeypatch):
+    # Keep this parser regression test independent of wall-clock time. The
+    # production parser intentionally ignores tracker entries older than 21
+    # days, while this fixture represents the September 8 ledger shape.
+    monkeypatch.setattr(
+        monitor,
+        "utc_now",
+        lambda: monitor.datetime(2026, 9, 9, 12, 0, tzinfo=monitor.timezone.utc),
+    )
+
     text = (
         "1. forced reset Global Codex quota reset September 8, 2026 at 2:00 AM UTC "
         "The author explicitly states that usage has now been reset for all paid "

@@ -124,17 +124,33 @@ jobs:
           git add state/alerts.json
           git commit -m "chore: update monitor state"
 
-          # main can advance while this run is executing (for example, when a
-          # PR is merged). Retry a rejected push by rebasing the state commit
-          # onto the latest main instead of turning that harmless race into a
-          # failed monitor run.
-          for attempt in 1 2 3; do
+          # main can advance while this run is executing, and GitHub can also
+          # reject a push transiently. Retry with increasing backoff so short
+          # outages do not immediately turn a healthy monitor run into a
+          # failure. Before each retry, refresh/rebase onto the latest main
+          # when GitHub is reachable. A real rebase conflict still fails loudly.
+          for attempt in 1 2 3 4; do
             if git push origin HEAD:main; then
               exit 0
             fi
 
-            echo "State push attempt $attempt was rejected; rebasing onto latest main."
-            git fetch origin main
+            if [[ "$attempt" -eq 4 ]]; then
+              break
+            fi
+
+            case "$attempt" in
+              1) retry_delay=5 ;;
+              2) retry_delay=15 ;;
+              3) retry_delay=30 ;;
+            esac
+
+            echo "State push attempt $attempt failed; waiting ${retry_delay}s before retry."
+            sleep "$retry_delay"
+
+            if ! git fetch origin main; then
+              echo "::warning::Could not refresh origin/main before retry; next push will still be attempted."
+              continue
+            fi
 
             if ! git rebase origin/main; then
               git rebase --abort || true
@@ -143,5 +159,5 @@ jobs:
             fi
           done
 
-          echo "::error::Could not persist monitor state after 3 push attempts."
+          echo "::error::Could not persist monitor state after 4 push attempts with backoff."
           exit 1
