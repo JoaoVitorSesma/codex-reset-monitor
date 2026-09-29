@@ -1,0 +1,45 @@
+# Local secrets and environment files
+.env
+.env.*
+!.env.example
+!.env.sample
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+!.dev.vars.sample
+
+# Cloudflare local state
+.wrangler/
+cloudflare/.wrangler/
+
+# Dependency / virtual environment directories
+node_modules/
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+
+# Python / coverage artifacts
+*.py[cod]
+.coverage
+coverage/
+htmlcov/
+
+# Logs, temporary files and local backups
+*.log
+*.tmp
+*.bak
+*.backup
+cloudflare/wrangler.toml.*backup*
+
+# Private keys / certificates
+*.pem
+*.key
+*.p12
+*.pfx
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
