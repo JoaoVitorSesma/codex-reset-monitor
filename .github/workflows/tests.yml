@@ -25,40 +25,8 @@ jobs:
 
           forbidden_files="$(
             git ls-files |
-              grep -E '(^|/)(\.env($|\.)|\.dev\.vars($|\.)|\.wrangler/)|\.(pem|key|p12|pfx)
-        with:
-          python-version: "3.12"
-          cache: "pip"
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Check Cloudflare scheduler syntax
-        run: node --check cloudflare/worker.js
-
-      - name: Run Cloudflare watchdog tests
-        run: node --test cloudflare/worker.test.js
-
-      - name: Run tests
-        run: pytest -q
- |
-              grep -Ev '(\.env|\.dev\.vars)\.(example|sample)
-        with:
-          python-version: "3.12"
-          cache: "pip"
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Check Cloudflare scheduler syntax
-        run: node --check cloudflare/worker.js
-
-      - name: Run Cloudflare watchdog tests
-        run: node --test cloudflare/worker.test.js
-
-      - name: Run tests
-        run: pytest -q
- || true
+              grep -E '(^|/)(\.env($|\.)|\.dev\.vars($|\.)|\.wrangler/)|\.(pem|key|p12|pfx)$' |
+              grep -Ev '(\.env|\.dev\.vars)\.(example|sample)$' || true
           )"
 
           if [[ -n "$forbidden_files" ]]; then
