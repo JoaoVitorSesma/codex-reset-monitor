@@ -2,7 +2,7 @@ name: Tests
 
 on:
   push:
-    branches: [main, "feat/**", "fix/**"]
+    branches: [main, "feat/**", "fix/**", "chore/**"]
   pull_request:
     branches: [main]
 
@@ -17,6 +17,64 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Guard against committed secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          forbidden_files="$(
+            git ls-files |
+              grep -E '(^|/)(\.env($|\.)|\.dev\.vars($|\.)|\.wrangler/)|\.(pem|key|p12|pfx)
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check Cloudflare scheduler syntax
+        run: node --check cloudflare/worker.js
+
+      - name: Run Cloudflare watchdog tests
+        run: node --test cloudflare/worker.test.js
+
+      - name: Run tests
+        run: pytest -q
+ |
+              grep -Ev '(\.env|\.dev\.vars)\.(example|sample)
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check Cloudflare scheduler syntax
+        run: node --check cloudflare/worker.js
+
+      - name: Run Cloudflare watchdog tests
+        run: node --test cloudflare/worker.test.js
+
+      - name: Run tests
+        run: pytest -q
+ || true
+          )"
+
+          if [[ -n "$forbidden_files" ]]; then
+            echo "::error::Sensitive/local-only files are tracked:"
+            printf '%s\n' "$forbidden_files"
+            exit 1
+          fi
+
+          secret_pattern='https://(discord\.com|discordapp\.com)/api/webhooks/[0-9]+/[A-Za-z0-9._-]{20,}|github_pat_[A-Za-z0-9_]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{20,}|AIza[0-9A-Za-z_-]{35}'
+
+          if git grep -nI -E "$secret_pattern" -- .; then
+            echo "::error::Possible committed credential detected. Remove it and rotate the credential before merging."
+            exit 1
+          fi
+
+          echo "No obvious committed credentials detected."
 
       - name: Set up Python
         uses: actions/setup-python@v6
