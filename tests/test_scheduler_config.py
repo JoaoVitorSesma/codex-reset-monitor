@@ -29,3 +29,17 @@ def test_fallback_gate_fails_open_if_github_lookup_breaks():
     assert "if ! latest=" in WORKFLOW
     assert "failing open and running the GitHub fallback" in WORKFLOW
     assert '"repos/$REPOSITORY/actions/workflows/monitor.yml/runs?event=workflow_dispatch&per_page=1"' in WORKFLOW
+
+
+def test_state_push_retries_use_increasing_backoff():
+    assert "for attempt in 1 2 3 4; do" in WORKFLOW
+    assert "1) retry_delay=5 ;;" in WORKFLOW
+    assert "2) retry_delay=15 ;;" in WORKFLOW
+    assert "3) retry_delay=30 ;;" in WORKFLOW
+    assert 'sleep "$retry_delay"' in WORKFLOW
+    assert "after 4 push attempts with backoff" in WORKFLOW
+
+
+def test_state_push_refresh_failure_is_retryable_but_rebase_conflict_is_fatal():
+    assert "Could not refresh origin/main before retry; next push will still be attempted." in WORKFLOW
+    assert "Could not rebase monitor state onto latest main." in WORKFLOW
